@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { lookupBarcode } from '../../integrations/openFoodFacts';
 import { recognizeProduct } from '../../integrations/claudeVision';
+import { recognizeProductGemini } from '../../integrations/geminiVision';
 import { getPricesForProduct } from '../../services/priceService';
 
 const router = Router();
@@ -66,8 +67,9 @@ router.post('/image', async (req, res) => {
       return res.status(400).json({ error: 'Image is required (base64)' });
     }
 
-    // Use Claude Vision to identify the product
-    const identifiedProduct = await recognizeProduct(imageBase64);
+    // Try Gemini first, fall back to Claude Vision
+    const identifiedProduct = await recognizeProductGemini(imageBase64)
+      || await recognizeProduct(imageBase64);
 
     if (!identifiedProduct) {
       return res.status(404).json({ error: 'Could not identify product from image' });

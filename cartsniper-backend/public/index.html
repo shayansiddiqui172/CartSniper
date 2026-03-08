@@ -8,6 +8,9 @@
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- Barcode scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -518,6 +521,54 @@
         </button>
       </div>
     </div>
+
+    <!-- Scan section — always visible below location -->
+    <div class="max-w-lg mx-auto mt-4">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="flex:1;height:1px;background:#d1d5db;"></div>
+        <span style="color:#9ca3af;font-size:13px;font-weight:500;">or scan instead</span>
+        <div style="flex:1;height:1px;background:#d1d5db;"></div>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="openBarcodeScanner()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:2px dashed #d1d5db;border-radius:10px;background:#fff;font-size:14px;font-weight:600;color:#374151;cursor:pointer;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a7a3c';this.style.color='#1a7a3c'" onmouseout="this.style.borderColor='#d1d5db';this.style.color='#374151'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+          Scan Barcode
+        </button>
+        <button onclick="openPhotoCapture()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:2px dashed #d1d5db;border-radius:10px;background:#fff;font-size:14px;font-weight:600;color:#374151;cursor:pointer;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a7a3c';this.style.color='#1a7a3c'" onmouseout="this.style.borderColor='#d1d5db';this.style.color='#374151'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Take Photo
+        </button>
+      </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div id="scanner-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;justify-content:center;align-items:center;">
+      <div style="background:#fff;border-radius:16px;max-width:480px;width:90%;max-height:90vh;overflow:hidden;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e5e7eb;">
+          <h3 id="scanner-title" style="font-weight:700;font-size:16px;color:#111827;">Scan Barcode</h3>
+          <button onclick="closeScanner()" style="background:none;border:none;cursor:pointer;font-size:24px;color:#6b7280;line-height:1;">&times;</button>
+        </div>
+        <div id="scanner-body" style="padding:16px;">
+          <!-- Barcode scanner or photo capture goes here -->
+          <div id="barcode-reader" style="width:100%;"></div>
+          <div id="photo-capture" style="display:none;">
+            <video id="photo-video" autoplay playsinline style="width:100%;border-radius:10px;background:#000;"></video>
+            <canvas id="photo-canvas" style="display:none;"></canvas>
+            <div style="display:flex;gap:10px;margin-top:12px;">
+              <button id="capture-btn" onclick="capturePhoto()" style="flex:1;padding:12px;background:#1a7a3c;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Capture Photo</button>
+            </div>
+            <div id="photo-preview" style="display:none;margin-top:12px;">
+              <img id="photo-preview-img" style="width:100%;border-radius:10px;" />
+              <div style="display:flex;gap:10px;margin-top:12px;">
+                <button onclick="retakePhoto()" style="flex:1;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Retake</button>
+                <button onclick="submitPhoto()" style="flex:1;padding:10px;background:#1a7a3c;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Identify Product</button>
+              </div>
+            </div>
+          </div>
+          <div id="scanner-status" style="text-align:center;padding:12px;color:#6b7280;font-size:13px;"></div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ─── STATS ─── -->
@@ -876,6 +927,179 @@
     function hidePostalError() {
       const el = document.getElementById('postal-error');
       if (el) el.style.display = 'none';
+    }
+
+    // ─── BARCODE SCANNER ───
+    let html5QrCode = null;
+    let photoStream = null;
+    let capturedImageBase64 = null;
+
+    function openBarcodeScanner() {
+      if (!locationSet) { document.getElementById('postal-input').focus(); document.getElementById('search-area').scrollIntoView({behavior:'smooth'}); return; }
+      document.getElementById('scanner-title').textContent = 'Scan Barcode';
+      document.getElementById('barcode-reader').style.display = 'block';
+      document.getElementById('photo-capture').style.display = 'none';
+      document.getElementById('scanner-status').textContent = 'Point your camera at a barcode...';
+      document.getElementById('scanner-modal').style.display = 'flex';
+
+      html5QrCode = new Html5Qrcode('barcode-reader');
+      html5QrCode.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 },
+        onBarcodeScanned,
+        () => {} // ignore scan failures
+      ).catch(err => {
+        document.getElementById('scanner-status').textContent = 'Camera not available. Try entering the barcode manually.';
+        console.error('Scanner error:', err);
+      });
+    }
+
+    async function onBarcodeScanned(decodedText) {
+      // Stop scanning immediately
+      if (html5QrCode) {
+        await html5QrCode.stop().catch(() => {});
+      }
+      document.getElementById('scanner-status').innerHTML =
+        `<span style="color:#1a7a3c;font-weight:600;">Barcode found: ${decodedText}</span><br/>Looking up product...`;
+
+      try {
+        const res = await fetch(`${API_URL}/scan/barcode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: decodedText }),
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          closeScanner();
+          renderResults(data.product?.name || decodedText, data);
+          document.getElementById('results-section').style.display = 'block';
+          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+          updateStats(data.prices || []);
+        } else {
+          document.getElementById('scanner-status').innerHTML =
+            `<span style="color:#dc2626;">Product not found for barcode ${decodedText}.</span><br/>Try searching by name or taking a photo instead.`;
+        }
+      } catch (err) {
+        document.getElementById('scanner-status').innerHTML =
+          `<span style="color:#dc2626;">Lookup failed. Try again or search by name.</span>`;
+      }
+    }
+
+    // ─── PHOTO CAPTURE ───
+    function openPhotoCapture() {
+      if (!locationSet) { document.getElementById('postal-input').focus(); document.getElementById('search-area').scrollIntoView({behavior:'smooth'}); return; }
+      document.getElementById('scanner-title').textContent = 'Take a Photo';
+      document.getElementById('barcode-reader').style.display = 'none';
+      document.getElementById('photo-capture').style.display = 'block';
+      document.getElementById('photo-preview').style.display = 'none';
+      document.getElementById('capture-btn').style.display = 'block';
+      document.getElementById('scanner-status').textContent = 'Point your camera at the product and tap Capture.';
+      document.getElementById('scanner-modal').style.display = 'flex';
+      capturedImageBase64 = null;
+
+      const video = document.getElementById('photo-video');
+      video.style.display = 'block';
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          photoStream = stream;
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          document.getElementById('scanner-status').textContent = 'Camera not available on this device.';
+          console.error('Camera error:', err);
+        });
+    }
+
+    function capturePhoto() {
+      const video = document.getElementById('photo-video');
+      const canvas = document.getElementById('photo-canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      capturedImageBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+      // Show preview
+      video.style.display = 'none';
+      document.getElementById('capture-btn').style.display = 'none';
+      document.getElementById('photo-preview').style.display = 'block';
+      document.getElementById('photo-preview-img').src = `data:image/jpeg;base64,${capturedImageBase64}`;
+      document.getElementById('scanner-status').textContent = 'Looks good? Tap "Identify Product" to search.';
+    }
+
+    function retakePhoto() {
+      capturedImageBase64 = null;
+      document.getElementById('photo-preview').style.display = 'none';
+      document.getElementById('capture-btn').style.display = 'block';
+      document.getElementById('photo-video').style.display = 'block';
+      document.getElementById('scanner-status').textContent = 'Point your camera at the product and tap Capture.';
+    }
+
+    async function submitPhoto() {
+      if (!capturedImageBase64) return;
+
+      document.getElementById('scanner-status').innerHTML =
+        '<span style="color:#1a7a3c;font-weight:600;">Identifying product with AI...</span>';
+
+      try {
+        const res = await fetch(`${API_URL}/scan/image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: capturedImageBase64 }),
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.identified) {
+            closeScanner();
+            // Build result structure for rendering
+            const resultData = {
+              product: data.product || {
+                name: data.identified.name,
+                brand: data.identified.brand,
+                category: data.identified.category,
+              },
+              prices: data.prices || [],
+              bestPrice: data.bestPrice || null,
+            };
+            const label = data.identified.name + (data.identified.brand ? ` (${data.identified.brand})` : '');
+            renderResults(label, resultData);
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+            if (data.prices?.length) updateStats(data.prices);
+            if (data.message) {
+              document.getElementById('scanner-status').textContent = data.message;
+            }
+          } else {
+            document.getElementById('scanner-status').innerHTML =
+              '<span style="color:#dc2626;">Could not identify a product. Try again with a clearer photo.</span>';
+          }
+        } else {
+          document.getElementById('scanner-status').innerHTML =
+            '<span style="color:#dc2626;">Could not identify product. Try searching by name instead.</span>';
+        }
+      } catch (err) {
+        document.getElementById('scanner-status').innerHTML =
+          '<span style="color:#dc2626;">Request timed out. Try again or search by name.</span>';
+      }
+    }
+
+    function closeScanner() {
+      document.getElementById('scanner-modal').style.display = 'none';
+      if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode.clear();
+        html5QrCode = null;
+      }
+      if (photoStream) {
+        photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
+      }
+      capturedImageBase64 = null;
     }
 
     async function searchProduct() {
