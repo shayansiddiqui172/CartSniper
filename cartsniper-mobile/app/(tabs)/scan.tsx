@@ -67,10 +67,24 @@ export default function ScanScreen() {
   // Postal code state
   const [postalInput, setPostalInput] = useState('');
   const [postalCode, setPostalCode] = useState<string | null>(null);
-  const [postalArea, setPostalArea] = useState<string | null>(null);
+  const [postalArea, setPostalArea] = useState<string | null>(null); // shown during typing (FSA-level hint)
+  const [lockedLocation, setLockedLocation] = useState<string | null>(null); // "Location secured" after full code
   const [postalError, setPostalError] = useState<string | null>(null);
   const [postalLoading, setPostalLoading] = useState(false);
   const postalDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFsaRef = useRef<string | null>(null);
+
+  const geocodePostal = async (alphanum: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`https://geocoder.ca/?postal=${alphanum}&json=1`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data?.standard?.city) {
+        return `${data.standard.city}, ${data.standard.prov ?? 'ON'}`;
+      }
+    } catch {}
+    return null;
+  };
 
   const handlePostalChange = (text: string) => {
     // Strip everything except letters and digits, cap at 6 alphanum chars
@@ -83,17 +97,35 @@ export default function ScanScreen() {
 
     setPostalInput(formatted);
     setPostalError(null);
-    setPostalArea(null);
+    setLockedLocation(null);
     setPostalCode(null);
 
     if (postalDebounce.current) clearTimeout(postalDebounce.current);
 
-    if (alphanum.length === 0) return;
+    if (alphanum.length === 0) {
+      setPostalArea(null);
+      lastFsaRef.current = null;
+      return;
+    }
 
     // Immediate first-character check
     if (!/^[KLMNP]/i.test(alphanum)) {
       setPostalError('Ontario postal codes start with K, L, M, N, or P');
+      setPostalArea(null);
+      lastFsaRef.current = null;
       return;
+    }
+
+    const fsa = alphanum.slice(0, 3);
+
+    // Fetch area hint as soon as we have a full FSA (3 chars)
+    if (alphanum.length >= 3 && fsa !== lastFsaRef.current) {
+      lastFsaRef.current = fsa;
+      setPostalLoading(true);
+      geocodePostal(fsa).then((area) => {
+        setPostalArea(area);
+        setPostalLoading(false);
+      });
     }
 
     if (alphanum.length < 6) return;
@@ -108,20 +140,15 @@ export default function ScanScreen() {
       const display = formatPostalCode(alphanum);
       setPostalInput(display);
       setPostalCode(display);
-      setPostalLoading(true);
 
-      try {
-        const res = await fetch(`https://geocoder.ca/?postal=${alphanum}&json=1`);
-        if (!res.ok) throw new Error('lookup failed');
-        const data = await res.json();
-        if (data?.standard?.city) {
-          setPostalArea(`${data.standard.city}, ${data.standard.prov ?? 'ON'}`);
-        } else {
-          setPostalArea(null);
-        }
-      } catch {
-        setPostalArea(null);
-      } finally {
+      // Reuse FSA area if already fetched, else fetch full postal
+      if (postalArea) {
+        setLockedLocation(postalArea);
+      } else {
+        setPostalLoading(true);
+        const area = await geocodePostal(alphanum);
+        setPostalArea(area);
+        setLockedLocation(area);
         setPostalLoading(false);
       }
     }, 400);
@@ -211,10 +238,16 @@ export default function ScanScreen() {
             </View>
             {postalError ? (
               <Text style={styles.postalErrorText}>{postalError}</Text>
+            ) : lockedLocation ? (
+              <View style={styles.lockedBanner}>
+                <Ionicons name="lock-closed" size={13} color="#059669" />
+                <Text style={styles.lockedText}>Location secured · {lockedLocation}</Text>
+              </View>
             ) : postalArea ? (
-              <Text style={styles.postalAreaText}>
-                <Ionicons name="location-outline" size={13} /> {postalArea}
-              </Text>
+              <View style={styles.areaHint}>
+                <Ionicons name="location-outline" size={13} color="#6B7280" />
+                <Text style={styles.areaHintText}>{postalArea}</Text>
+              </View>
             ) : null}
           </View>
 
@@ -290,7 +323,10 @@ const styles = StyleSheet.create({
   postalInputValid: { borderColor: '#10B981' },
   postalSpinner: { marginLeft: 10 },
   postalErrorText: { fontSize: 12, color: '#EF4444', marginTop: 6 },
-  postalAreaText: { fontSize: 12, color: '#10B981', marginTop: 6 },
+  areaHint: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  areaHintText: { fontSize: 12, color: '#6B7280' },
+  lockedBanner: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, backgroundColor: '#D1FAE5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, alignSelf: 'flex-start' },
+  lockedText: { fontSize: 12, color: '#059669', fontWeight: '600' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 400 },
   cameraContainer: { height: 300, position: 'relative' },
   camera: { flex: 1 },
