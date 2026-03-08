@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CartSniper — Stop Overpaying for Groceries</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#F5EFE4',
+            'cream-dark': '#EDE5D5',
+            sniper: {
+              green: '#1a7a3c',
+              'green-light': '#22a64f',
+              'green-hover': '#155f2f',
+            }
+          },
+          fontFamily: {
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background-color: #F5EFE4; font-family: 'Inter', sans-serif; }
+
+    .hero-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: #1a7a3c;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid #d4e8d9;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: #1a7a3c;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22a64f;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 28px;
+      text-align: center;
+      border: 1px solid #e8e0d0;
+    }
+
+    .stat-number {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 900;
+      font-size: 2.4rem;
+      color: #1a7a3c;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #888;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    .store-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid #e8e0d0;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      white-space: nowrap;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+
+    .store-chip:hover {
+      border-color: #1a7a3c;
+      color: #1a7a3c;
+      box-shadow: 0 2px 8px rgba(26, 122, 60, 0.12);
+    }
+
+    .btn-primary {
+      background: #1a7a3c;
+      color: #fff;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover { background: #155f2f; }
+
+    .search-input {
+      border: 1.5px solid #ddd6c8;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 15px;
+      background: #fff;
+      width: 100%;
+      outline: none;
+      color: #333;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .search-input:focus {
+      border-color: #1a7a3c;
+      box-shadow: 0 0 0 3px rgba(26, 122, 60, 0.1);
+    }
+
+    /* Deal card */
+    .deal-card {
+      background: #fff;
+      border: 1px solid #e8e0d0;
+      border-radius: 12px;
+      padding: 20px;
+      transition: box-shadow 0.15s;
+    }
+
+    .deal-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    .best-price-tag {
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    #results-section { display: none; }
+    #loading { display: none; }
+
+    .price-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0ebe0;
+    }
+    .price-row:last-child { border-bottom: none; }
+
+    .nav-logo span { font-family: 'Playfair Display', serif; font-weight: 700; }
+    .nav-logo span.green { color: #1a7a3c; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: #999;
+      text-transform: uppercase;
+    }
+
+    /* Scroll fade for stores */
+    .stores-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .stores-scroll::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ─── NAVBAR ─── -->
+  <nav style="background: #F5EFE4; border-bottom: 1px solid #e8e0d0;">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="nav-logo flex items-center gap-2">
+        <!-- Target icon -->
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="13" fill="#1a7a3c"/>
+          <circle cx="14" cy="14" r="8" fill="white"/>
+          <circle cx="14" cy="14" r="4" fill="#1a7a3c"/>
+          <line x1="14" y1="1" x2="14" y2="7" stroke="white" stroke-width="2"/>
+          <line x1="14" y1="21" x2="14" y2="27" stroke="white" stroke-width="2"/>
+          <line x1="1" y1="14" x2="7" y2="14" stroke="white" stroke-width="2"/>
+          <line x1="21" y1="14" x2="27" y2="14" stroke="white" stroke-width="2"/>
+        </svg>
+        <span>Cart <span class="green">Sniper</span></span>
+      </div>
+      <button class="btn-primary" onclick="scrollToSearch()">Find Deals</button>
+    </div>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section class="max-w-3xl mx-auto text-center px-6 pt-16 pb-10">
+
+    <!-- Live badge -->
+    <div class="mb-8">
+      <span class="pill-badge">
+        <span class="pill-dot"></span>
+        LIVE WEEKLY FLYERS · CANADA
+      </span>
+    </div>
+
+    <!-- Headline -->
+    <h1 class="hero-title text-5xl md:text-6xl text-gray-900 mb-6">
+      Stop overpaying<br/>for <em>groceries.</em>
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="text-gray-500 text-lg max-w-lg mx-auto mb-10 leading-relaxed">
+      Search any product and instantly compare real this-week deals
+      across every major grocery store near you. Grab the flyer and price
+      match on the spot.
+    </p>
+
+    <!-- Search bar -->
+    <div id="search-area" class="max-w-lg mx-auto">
+      <div class="flex gap-3">
+        <input
+          id="postal-input"
+          type="text"
+          class="search-input"
+          placeholder="Enter postal code (e.g. N2G 1A1)"
+          onkeydown="if(event.key==='Enter') setLocation()"
+        />
+        <button class="btn-primary" onclick="setLocation()">Set Location</button>
+      </div>
+      <p id="location-hint" class="text-sm text-gray-400 mt-2">Enter your postal code to load real flyer deals from your area</p>
+      <p id="location-set" class="text-sm text-sniper-green font-medium mt-2" style="display:none; color:#1a7a3c;">
+        ✓ Location set — <span id="location-display"></span>
+      </p>
+    </div>
+
+    <!-- Product search (shown after location) -->
+    <div id="product-search" class="max-w-lg mx-auto mt-4" style="display:none;">
+      <div class="flex gap-3">
+        <input
+          id="product-input"
+          type="text"
+          class="search-input"
+          placeholder='Search a product (e.g. "milk", "chicken breast")'
+          onkeydown="if(event.key==='Enter') searchProduct()"
+        />
+        <button class="btn-primary" onclick="searchProduct()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── STATS ─── -->
+  <section class="max-w-3xl mx-auto px-6 pb-12">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="stat-card">
+        <div class="stat-number" id="stat-searches">0</div>
+        <div class="stat-label">Searches Run</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-deals">0</div>
+        <div class="stat-label">Deals Found</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">8</div>
+        <div class="stat-label">Stores Monitored</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-saved">$0</div>
+        <div class="stat-label">Saved This Session</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── STORES ─── -->
+  <section class="max-w-5xl mx-auto px-6 pb-16">
+    <p class="section-label text-center mb-5">STORES WE TRACK</p>
+    <div class="stores-scroll">
+      <div class="flex gap-3 justify-center flex-wrap">
+        <div class="store-chip">🛒 Walmart</div>
+        <div class="store-chip">🏬 Loblaws</div>
+        <div class="store-chip">🥦 Whole Foods</div>
+        <div class="store-chip">🏪 Metro</div>
+        <div class="store-chip">🟡 No Frills</div>
+        <div class="store-chip">🟢 FreshCo</div>
+        <div class="store-chip">🔴 Real Canadian Superstore</div>
+        <div class="store-chip">🟠 Food Basics</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── LOADING ─── -->
+  <div id="loading" class="max-w-3xl mx-auto px-6 text-center pb-10">
+    <div class="flex items-center justify-center gap-3 text-gray-500">
+      <svg class="animate-spin" style="color:#1a7a3c" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="22" height="22">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <span>Scanning stores...</span>
+    </div>
+  </div>
+
+  <!-- ─── RESULTS ─── -->
+  <section id="results-section" class="max-w-3xl mx-auto px-6 pb-20">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-xl font-semibold text-gray-800" id="results-title">Results</h2>
+      <span id="results-count" class="text-sm text-gray-400"></span>
+    </div>
+    <div id="results-grid" class="space-y-3"></div>
+  </section>
+
+  <!-- ─── HOW IT WORKS ─── -->
+  <section style="background: #EDE5D5; border-top: 1px solid #e0d8c8;" class="py-16">
+    <div class="max-w-4xl mx-auto px-6">
+      <p class="section-label text-center mb-10">HOW IT WORKS</p>
+      <div class="grid md:grid-cols-3 gap-8 text-center">
+        <div>
+          <div class="text-3xl mb-3">📍</div>
+          <h3 class="font-semibold text-gray-800 mb-2">Set Your Location</h3>
+          <p class="text-sm text-gray-500">Enter your postal code to find stores in your area</p>
+        </div>
+        <div>
+          <div class="text-3xl mb-3">🔍</div>
+          <h3 class="font-semibold text-gray-800 mb-2">Search Any Product</h3>
+          <p class="text-sm text-gray-500">Type any grocery item to compare this week's prices</p>
+        </div>
+        <div>
+          <div class="text-3xl mb-3">💰</div>
+          <h3 class="font-semibold text-gray-800 mb-2">Save Money</h3>
+          <p class="text-sm text-gray-500">See the cheapest store and use flyer prices to match</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer style="background: #1a1a1a; color: #aaa;" class="py-8">
+    <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+      <div class="nav-logo flex items-center gap-2 text-white">
+        <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="13" fill="#22a64f"/>
+          <circle cx="14" cy="14" r="8" fill="white"/>
+          <circle cx="14" cy="14" r="4" fill="#22a64f"/>
+        </svg>
+        <span style="font-family: 'Playfair Display', serif; font-weight:700;">Cart <span style="color:#22a64f">Sniper</span></span>
+      </div>
+      <p>© 2026 CartSniper — Built at Hack Canada 2026</p>
+      <p>Compare Canadian grocery prices in real time</p>
+    </div>
+  </footer>
+
+  <!-- ─── SCRIPT ─── -->
+  <script>
+    const API_URL = '';  // Same origin — served by Express
+    let sessionSearches = 0;
+    let sessionDeals = 0;
+    let sessionSaved = 0;
+    let locationSet = false;
+    let currentPostal = '';
+
+    // Demo product/price data (used when backend isn't running)
+    const DEMO_PRODUCTS = {
+      'milk': { name: 'Natrel 2% Milk 4L', brand: 'Natrel', barcode: '0068700100208' },
+      'bread': { name: 'PC Blue Menu Whole Grain Bread', brand: "President's Choice", barcode: '0055577100103' },
+      'eggs': { name: 'PC Free-Run Eggs Large 12pk', brand: "President's Choice", barcode: '0068700115010' },
+      'butter': { name: 'Lactantia Butter 454g', brand: 'Lactantia', barcode: '0063100100105' },
+      'ketchup': { name: 'Heinz Ketchup 750ml', brand: 'Heinz', barcode: '0057000000103' },
+      'bacon': { name: 'Maple Leaf Bacon 375g', brand: 'Maple Leaf', barcode: '0060410001202' },
+      'oj': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007' },
+      'juice': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007' },
+      'cheerios': { name: 'Cheerios 430g', brand: 'General Mills', barcode: '006038388860' },
+      'cereal': { name: 'Cheerios 430g', brand: 'General Mills', barcode: '006038388860' },
+      'chips': { name: "Lay's Classic Chips 235g", brand: "Lay's", barcode: '006038301107' },
+      'kd': { name: 'Kraft Dinner Original', brand: 'Kraft', barcode: '0057000012847' },
+      'coffee': { name: 'PC Whole Bean Coffee 340g', brand: "President's Choice", barcode: '0068700100307' },
+    };
+
+    const DEMO_STORES = [
+      { name: 'No Frills', slug: 'nofrills', address: '2280 Dundas St W' },
+      { name: 'Walmart', slug: 'walmart', address: '900 Dufferin St' },
+      { name: 'FreshCo', slug: 'freshco', address: '1245 Dupont St' },
+      { name: 'Loblaws', slug: 'loblaws', address: '396 St Clair Ave W' },
+      { name: 'Metro', slug: 'metro', address: '425 Bloor St W' },
+    ];
+
+    const STORE_EMOJIS = { walmart: '🛒', loblaws: '🏬', nofrills: '🟡', freshco: '🟢', metro: '🏪' };
+
+    function generateDemoPrices(base) {
+      return DEMO_STORES.map(store => ({
+        store,
+        price: +(base * (0.85 + Math.random() * 0.3)).toFixed(2),
+        salePrice: Math.random() > 0.7 ? +(base * (0.75 + Math.random() * 0.15)).toFixed(2) : null,
+        inStock: Math.random() > 0.08,
+      })).sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
+    }
+
+    const BASE_PRICES = {
+      '0068700100208': 6.99, '0055577100103': 3.49, '0068700115010': 5.49,
+      '0063100100105': 5.99, '0057000000103': 4.49, '0060410001202': 7.99,
+      '0066721008007': 4.29, '006038388860': 5.99, '006038301107': 4.29,
+      '0057000012847': 1.99, '0068700100307': 9.99,
+    };
+
+    function scrollToSearch() {
+      document.getElementById('search-area').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('postal-input').focus();
+    }
+
+    function setLocation() {
+      const val = document.getElementById('postal-input').value.trim().toUpperCase();
+      if (!val) return alert('Please enter a postal code');
+
+      currentPostal = val;
+      locationSet = true;
+
+      document.getElementById('location-hint').style.display = 'none';
+      document.getElementById('location-set').style.display = 'block';
+      document.getElementById('location-display').textContent = val;
+      document.getElementById('product-search').style.display = 'block';
+      document.getElementById('product-input').focus();
+    }
+
+    async function searchProduct() {
+      if (!locationSet) { alert('Please set your location first'); return; }
+
+      const query = document.getElementById('product-input').value.trim().toLowerCase();
+      if (!query) return;
+
+      // Show loading
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('results-section').style.display = 'none';
+
+      // Try backend first, fall back to demo data
+      let data = null;
+      try {
+        // Find matching barcode from demo map
+        const match = DEMO_PRODUCTS[query] || Object.values(DEMO_PRODUCTS).find(p =>
+          p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query)
+        );
+
+        if (match) {
+          // Try real backend
+          try {
+            const res = await fetch(`${API_URL}/scan/barcode`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ barcode: match.barcode }),
+              signal: AbortSignal.timeout(2000)
+            });
+            if (res.ok) data = await res.json();
+          } catch {
+            // Backend unavailable — use demo data
+            const base = BASE_PRICES[match.barcode] || 4.99;
+            data = {
+              product: { ...match, id: match.barcode },
+              prices: generateDemoPrices(base),
+              demo: true,
+            };
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      document.getElementById('loading').style.display = 'none';
+
+      if (!data) {
+        // Generic demo data for any query
+        const base = 3 + Math.random() * 8;
+        data = {
+          product: { name: capitalize(query), brand: 'Various', id: query },
+          prices: generateDemoPrices(base),
+          demo: true,
+        };
+      }
+
+      renderResults(query, data);
+      updateStats(data.prices || []);
+    }
+
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function renderResults(query, data) {
+      const section = document.getElementById('results-section');
+      const grid = document.getElementById('results-grid');
+      const title = document.getElementById('results-title');
+      const count = document.getElementById('results-count');
+
+      const { product, prices } = data;
+      const effectivePrices = (prices || []).map(p => ({
+        ...p,
+        effective: p.salePrice || p.price
+      })).sort((a, b) => a.effective - b.effective);
+
+      title.textContent = product.name || capitalize(query);
+      count.textContent = `${effectivePrices.length} stores` + (data.demo ? ' · demo data' : '');
+
+      grid.innerHTML = '';
+
+      effectivePrices.forEach((p, i) => {
+        const isBest = i === 0;
+        const store = p.store || {};
+        const emoji = STORE_EMOJIS[store.slug] || '🏪';
+        const onSale = !!p.salePrice;
+        const savings = onSale ? (p.price - p.salePrice).toFixed(2) : null;
+
+        const card = document.createElement('div');
+        card.className = 'deal-card';
+        if (isBest) card.style.borderColor = '#22a64f';
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-xl">${emoji}</span>
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="font-semibold text-gray-800">${store.name || 'Store'}</p>
+                  ${isBest ? '<span class="best-price-tag">BEST PRICE</span>' : ''}
+                  ${onSale ? '<span style="background:#fef9c3;color:#854d0e;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;">SALE</span>' : ''}
+                </div>
+                <p class="text-xs text-gray-400 mt-0.5">${store.address || ''}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              ${onSale ? `<p class="text-sm text-gray-400 line-through">$${p.price.toFixed(2)}</p>` : ''}
+              <p class="text-2xl font-bold" style="color:${isBest ? '#1a7a3c' : '#222'}">$${(p.effective).toFixed(2)}</p>
+              ${onSale ? `<p class="text-xs" style="color:#1a7a3c">Save $${savings}</p>` : ''}
+              <p class="text-xs mt-1 ${p.inStock ? 'text-green-600' : 'text-red-400'}">${p.inStock ? '● In stock' : '○ Out of stock'}</p>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Summary card
+      if (effectivePrices.length >= 2) {
+        const best = effectivePrices[0].effective;
+        const worst = effectivePrices[effectivePrices.length - 1].effective;
+        const potentialSave = (worst - best).toFixed(2);
+
+        const summary = document.createElement('div');
+        summary.style.cssText = 'background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; margin-top: 4px;';
+        summary.innerHTML = `
+          <p class="text-sm font-semibold" style="color:#15803d">💡 Shop at ${effectivePrices[0].store?.name || 'the cheapest store'} to save <strong>$${potentialSave}</strong> vs. the most expensive option</p>
+        `;
+        grid.appendChild(summary);
+      }
+
+      section.style.display = 'block';
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function updateStats(prices) {
+      sessionSearches++;
+      document.getElementById('stat-searches').textContent = sessionSearches;
+
+      const dealsFound = prices.filter(p => p.salePrice).length;
+      sessionDeals += dealsFound;
+      document.getElementById('stat-deals').textContent = sessionDeals;
+
+      if (prices.length >= 2) {
+        const sorted = prices.map(p => p.salePrice || p.price).sort((a, b) => a - b);
+        const potentialSave = +(sorted[sorted.length - 1] - sorted[0]).toFixed(2);
+        sessionSaved += potentialSave;
+        document.getElementById('stat-saved').textContent = `$${sessionSaved.toFixed(2)}`;
+      }
+    }
+  </script>
+
+</body>
+</html>
