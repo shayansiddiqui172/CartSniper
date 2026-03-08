@@ -1015,28 +1015,34 @@
 
         if (res.ok) {
           const data = await res.json();
-          closeScanner();
-          renderResults(data.product?.name || decodedText, data);
-          document.getElementById('results-section').style.display = 'block';
-          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
-          updateStats(data.prices || []);
+          console.log('Scan result:', data);
+          try {
+            closeScanner();
+            renderResults(data.product?.name || decodedText, data);
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+            updateStats(data.prices || []);
+          } catch (renderErr) {
+            console.error('Render error:', renderErr);
+            alert('Error displaying results: ' + renderErr.message);
+          }
         } else {
-          // Show error but let them retry
+          const errBody = await res.text().catch(() => '');
+          console.log('Scan error:', res.status, errBody);
+          // Show error but let them retry — keep modal open
           scanLocked = false;
           document.getElementById('barcode-reader').style.display = 'block';
           document.getElementById('manual-barcode-entry').style.display = 'block';
           document.getElementById('scanner-status').innerHTML =
             `<span style="color:#dc2626;font-weight:600;">Product not found for barcode ${decodedText}.</span><br/>Try a different barcode or enter one manually.`;
-          // Restart scanner
-          try { html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 }, onBarcodeScanned, () => {}); } catch(e) {}
         }
       } catch (err) {
+        console.error('Fetch error:', err);
         scanLocked = false;
         document.getElementById('barcode-reader').style.display = 'block';
         document.getElementById('manual-barcode-entry').style.display = 'block';
         document.getElementById('scanner-status').innerHTML =
-          `<span style="color:#dc2626;font-weight:600;">Lookup timed out.</span><br/>Try entering the barcode number manually below.`;
-        try { html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 }, onBarcodeScanned, () => {}); } catch(e) {}
+          `<span style="color:#dc2626;font-weight:600;">Lookup failed: ${err.message}</span><br/>Try entering the barcode number manually below.`;
       }
     }
 
