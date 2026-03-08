@@ -1016,15 +1016,15 @@
         if (res.ok) {
           const data = await res.json();
           console.log('Scan result:', data);
+          closeScanner();
           try {
-            closeScanner();
             renderResults(data.product?.name || decodedText, data);
             document.getElementById('results-section').style.display = 'block';
             document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
             updateStats(data.prices || []);
           } catch (renderErr) {
             console.error('Render error:', renderErr);
-            alert('Error displaying results: ' + renderErr.message);
+            alert('Error displaying results: ' + String(renderErr));
           }
         } else {
           const errBody = await res.text().catch(() => '');
@@ -1157,12 +1157,12 @@
     function closeScanner() {
       document.getElementById('scanner-modal').style.display = 'none';
       if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-        html5QrCode.clear();
+        try { html5QrCode.stop().catch(() => {}); } catch(e) {}
+        try { html5QrCode.clear(); } catch(e) {}
         html5QrCode = null;
       }
       if (photoStream) {
-        photoStream.getTracks().forEach(t => t.stop());
+        try { photoStream.getTracks().forEach(t => t.stop()); } catch(e) {}
         photoStream = null;
       }
       capturedImageBase64 = null;
