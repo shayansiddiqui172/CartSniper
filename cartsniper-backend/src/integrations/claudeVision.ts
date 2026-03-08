@@ -10,6 +10,11 @@ export interface RecognizedProduct {
   brand: string | null;
   category: string | null;
   confidence: 'high' | 'medium' | 'low';
+  size?: string | null;
+  keywords?: string[];
+  upc?: string | null;
+  description?: string | null;
+  alternatives?: string[];
 }
 
 // Recognize grocery product from image

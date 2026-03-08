@@ -3,37 +3,83 @@ import { PrismaClient } from '@prisma/client';
 import { getProductByBarcode } from '../../integrations/openFoodFacts';
 import { recognizeProduct } from '../../integrations/claudeVision';
 import { recognizeProductGemini } from '../../integrations/geminiVision';
-import { getPricesForProduct } from '../../services/priceService';
+import { getPricesForProduct, getPricesNearby } from '../../services/priceService';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// 5 Canadian grocery stores for mock prices
+// Canadian grocery store locations across the GTA
 const CANADIAN_STORES = [
-  { name: 'Walmart', slug: 'walmart', address: 'Walmart Supercentre' },
-  { name: 'Loblaws', slug: 'loblaws', address: 'Loblaws City Market' },
-  { name: 'No Frills', slug: 'nofrills', address: 'No Frills' },
-  { name: 'FreshCo', slug: 'freshco', address: 'FreshCo' },
-  { name: 'Metro', slug: 'metro', address: 'Metro' },
+  { name: 'Walmart', slug: 'walmart', address: '900 Dufferin St, Toronto, ON', latitude: 43.6532, longitude: -79.3832 },
+  { name: 'Walmart', slug: 'walmart-milton', address: '1280 Steeles Ave E, Milton, ON', latitude: 43.5183, longitude: -79.8774 },
+  { name: 'Walmart', slug: 'walmart-mississauga', address: '3100 Dixie Rd, Mississauga, ON', latitude: 43.5890, longitude: -79.6441 },
+  { name: 'Walmart', slug: 'walmart-brampton', address: '35 Worthington Ave, Brampton, ON', latitude: 43.7315, longitude: -79.7624 },
+  { name: 'Walmart', slug: 'walmart-oakville', address: '240 Leighland Ave, Oakville, ON', latitude: 43.4675, longitude: -79.6877 },
+  { name: 'Loblaws', slug: 'loblaws', address: '396 St Clair Ave W, Toronto, ON', latitude: 43.6675, longitude: -79.3995 },
+  { name: 'Loblaws', slug: 'loblaws-milton', address: '55 Ontario St S, Milton, ON', latitude: 43.5231, longitude: -79.8830 },
+  { name: 'Loblaws', slug: 'loblaws-mississauga', address: '3045 Clayhill Rd, Mississauga, ON', latitude: 43.5468, longitude: -79.6603 },
+  { name: 'Loblaws', slug: 'loblaws-brampton', address: '9980 Airport Rd, Brampton, ON', latitude: 43.6833, longitude: -79.7590 },
+  { name: 'Loblaws', slug: 'loblaws-oakville', address: '469 Cornwall Rd, Oakville, ON', latitude: 43.4478, longitude: -79.6667 },
+  { name: 'No Frills', slug: 'nofrills', address: '2280 Dundas St W, Toronto, ON', latitude: 43.6789, longitude: -79.4103 },
+  { name: 'No Frills', slug: 'nofrills-milton', address: '490 Childs Dr, Milton, ON', latitude: 43.5107, longitude: -79.8838 },
+  { name: 'No Frills', slug: 'nofrills-mississauga', address: '3476 Glen Erin Dr, Mississauga, ON', latitude: 43.5712, longitude: -79.6139 },
+  { name: 'No Frills', slug: 'nofrills-brampton', address: '10088 McLaughlin Rd, Brampton, ON', latitude: 43.7088, longitude: -79.7314 },
+  { name: 'No Frills', slug: 'nofrills-oakville', address: '1011 Upper Middle Rd E, Oakville, ON', latitude: 43.4555, longitude: -79.7012 },
+  { name: 'FreshCo', slug: 'freshco', address: '1245 Dupont St, Toronto, ON', latitude: 43.6543, longitude: -79.4256 },
+  { name: 'FreshCo', slug: 'freshco-milton', address: '315 Main St E, Milton, ON', latitude: 43.5150, longitude: -79.8700 },
+  { name: 'FreshCo', slug: 'freshco-mississauga', address: '2550 Hurontario St, Mississauga, ON', latitude: 43.5955, longitude: -79.5876 },
+  { name: 'FreshCo', slug: 'freshco-brampton', address: '499 Main St S, Brampton, ON', latitude: 43.6912, longitude: -79.7567 },
+  { name: 'Metro', slug: 'metro', address: '425 Bloor St W, Toronto, ON', latitude: 43.6712, longitude: -79.3867 },
+  { name: 'Metro', slug: 'metro-milton', address: '400 Main St E, Milton, ON', latitude: 43.5204, longitude: -79.8817 },
+  { name: 'Metro', slug: 'metro-mississauga', address: '1585 Mississauga Valley Blvd, Mississauga, ON', latitude: 43.5517, longitude: -79.6574 },
+  { name: 'Metro', slug: 'metro-oakville', address: '280 North Service Rd W, Oakville, ON', latitude: 43.4505, longitude: -79.6815 },
 ];
 
-// Generate deterministic mock prices seeded by barcode so they stay stable
-function generateMockPrices(barcode: string) {
-  // Simple hash from barcode to get a base price between $2 and $15
-  let hash = 0;
-  for (const ch of barcode) hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
-  const base = 2 + Math.abs(hash % 1300) / 100; // $2.00 – $15.00
+// Haversine distance in km
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
-  return CANADIAN_STORES.map((store, i) => {
-    // Each store varies ±20% from base, deterministic per store index
+// Generate deterministic mock prices seeded by barcode, filtered by location
+function generateMockPrices(barcode: string, latitude?: number, longitude?: number, radiusKm: number = 15) {
+  const seed = barcode || 'unknown';
+  let hash = 0;
+  for (const ch of seed) hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+  const base = 2 + Math.abs(hash % 1300) / 100;
+
+  // Annotate all stores with distance
+  const annotated = CANADIAN_STORES.map((store, i) => ({
+    ...store,
+    distance: (latitude && longitude)
+      ? haversineDistance(latitude, longitude, store.latitude, store.longitude)
+      : null as number | null,
+    index: i,
+  }));
+
+  // Filter to radius — but if that yields nothing, fall back to the 5 nearest
+  let stores = (latitude && longitude)
+    ? annotated.filter(s => (s.distance as number) <= radiusKm)
+    : annotated;
+
+  if (stores.length === 0 && latitude && longitude) {
+    stores = [...annotated]
+      .sort((a, b) => (a.distance as number) - (b.distance as number))
+      .slice(0, 5);
+  }
+
+  return stores.map((store) => {
+    const i = store.index;
     const variation = 1 + ((((hash >> (i * 3)) & 0x3F) - 32) / 160);
     const price = +(base * variation).toFixed(2);
-    // ~30% chance of a sale (deterministic)
     const onSale = ((hash >> (i * 5)) & 0x7) < 2;
     const salePrice = onSale ? +(price * 0.8).toFixed(2) : null;
 
     return {
-      id: `mock-${store.slug}-${barcode}`,
+      id: `mock-${store.slug}-${seed}`,
       store: { id: store.slug, name: store.name, slug: store.slug, address: store.address },
       price,
       salePrice,
@@ -41,6 +87,7 @@ function generateMockPrices(barcode: string) {
       inStock: true,
       unit: 'each',
       scrapedAt: new Date().toISOString(),
+      distance: store.distance != null ? +store.distance.toFixed(1) : null,
     };
   }).sort((a, b) => a.effectivePrice - b.effectivePrice);
 }
@@ -49,11 +96,14 @@ function generateMockPrices(barcode: string) {
 // Scans barcode → looks up product (DB cache or Open Food Facts) → returns prices
 router.post('/barcode', async (req, res) => {
   try {
-    const { barcode } = req.body;
+    const { barcode, latitude, longitude } = req.body;
 
     if (!barcode) {
       return res.status(400).json({ error: 'Barcode is required' });
     }
+
+    const lat = latitude ? parseFloat(latitude) : undefined;
+    const lng = longitude ? parseFloat(longitude) : undefined;
 
     // 1. Get product (cached in DB or fetched from Open Food Facts)
     const product = await getProductByBarcode(barcode);
@@ -62,13 +112,28 @@ router.post('/barcode', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // 2. Try real prices from DB first
-    const dbPrices = await getPricesForProduct(product.id);
+    // 2. Try real prices from DB first (nearby if coords provided)
+    let dbPrices = (lat && lng)
+      ? await getPricesNearby(product.id, lat, lng, 15)
+      : await getPricesForProduct(product.id);
+
+    // Add distance to DB prices if coordinates provided
+    if (lat && lng && dbPrices.length > 0) {
+      const allStores = await prisma.store.findMany();
+      const storeMap = new Map(allStores.map(s => [s.id, s]));
+      dbPrices = dbPrices.map(p => {
+        const store = storeMap.get(p.store.id);
+        const distance = store
+          ? +haversineDistance(lat, lng, store.latitude, store.longitude).toFixed(1)
+          : null;
+        return { ...p, distance };
+      });
+    }
 
     // 3. If no real prices, return mock Canadian store prices
     const prices = dbPrices.length > 0
       ? dbPrices
-      : generateMockPrices(barcode);
+      : generateMockPrices(barcode, lat, lng);
 
     return res.json({
       product,
@@ -85,11 +150,14 @@ router.post('/barcode', async (req, res) => {
 // Sends image to Gemini/Claude Vision to identify product
 router.post('/image', async (req, res) => {
   try {
-    const { imageBase64 } = req.body;
+    const { imageBase64, latitude, longitude } = req.body;
 
     if (!imageBase64) {
       return res.status(400).json({ error: 'Image is required (base64)' });
     }
+
+    const lat = latitude ? parseFloat(latitude) : undefined;
+    const lng = longitude ? parseFloat(longitude) : undefined;
 
     // Try Gemini first, fall back to Claude Vision
     const identifiedProduct = await recognizeProductGemini(imageBase64)
@@ -99,15 +167,22 @@ router.post('/image', async (req, res) => {
       return res.status(404).json({ error: 'Could not identify product from image' });
     }
 
-    // Search for product in our DB by name
-    const product = await prisma.product.findFirst({
-      where: {
-        OR: [
-          { name: { contains: identifiedProduct.name } },
-          { brand: { contains: identifiedProduct.brand || '' } },
-        ],
-      },
-    });
+    // If Gemini read a UPC off the packaging, try barcode lookup first
+    let product = identifiedProduct.upc
+      ? await prisma.product.findFirst({ where: { barcode: identifiedProduct.upc } })
+      : null;
+
+    // Fall back to name/brand search
+    if (!product) {
+      product = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { name: { contains: identifiedProduct.name } },
+            { brand: { contains: identifiedProduct.brand || '' } },
+          ],
+        },
+      });
+    }
 
     if (!product) {
       return res.json({
@@ -121,7 +196,7 @@ router.post('/image', async (req, res) => {
     const dbPrices = await getPricesForProduct(product.id);
     const prices = dbPrices.length > 0
       ? dbPrices
-      : generateMockPrices(product.barcode);
+      : generateMockPrices(product.barcode || product.id, lat, lng);
 
     return res.json({
       identified: identifiedProduct,
