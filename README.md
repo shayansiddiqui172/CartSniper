@@ -72,4 +72,4 @@ cartsniper-mobile/
 
 ## Team
 
-Built at [Hackathon Name] - March 2026
+Built at HackCanada - March 2026
