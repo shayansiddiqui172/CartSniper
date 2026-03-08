@@ -744,19 +744,48 @@
 
     // Demo product/price data (used when backend isn't running)
     const DEMO_PRODUCTS = {
-      'milk': { name: 'Natrel 2% Milk 4L', brand: 'Natrel', barcode: '0068700100208' },
-      'bread': { name: 'PC Blue Menu Whole Grain Bread', brand: "President's Choice", barcode: '0055577100103' },
-      'eggs': { name: 'PC Free-Run Eggs Large 12pk', brand: "President's Choice", barcode: '0068700115010' },
-      'butter': { name: 'Lactantia Butter 454g', brand: 'Lactantia', barcode: '0063100100105' },
-      'ketchup': { name: 'Heinz Ketchup 750ml', brand: 'Heinz', barcode: '0057000000103' },
-      'bacon': { name: 'Maple Leaf Bacon 375g', brand: 'Maple Leaf', barcode: '0060410001202' },
-      'oj': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007' },
-      'juice': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007' },
-      'cheerios': { name: 'Cheerios 430g', brand: 'General Mills', barcode: '006038388860' },
-      'cereal': { name: 'Cheerios 430g', brand: 'General Mills', barcode: '006038388860' },
-      'chips': { name: "Lay's Classic Chips 235g", brand: "Lay's", barcode: '006038301107' },
-      'kd': { name: 'Kraft Dinner Original', brand: 'Kraft', barcode: '0057000012847' },
-      'coffee': { name: 'PC Whole Bean Coffee 340g', brand: "President's Choice", barcode: '0068700100307' },
+      // Dairy
+      'milk': { name: 'Natrel 2% Milk 4L', brand: 'Natrel', barcode: '0068700100208', category: 'Dairy' },
+      'natrel': { name: 'Natrel 2% Milk 4L', brand: 'Natrel', barcode: '0068700100208', category: 'Dairy' },
+      'butter': { name: 'Lactantia Butter 454g', brand: 'Lactantia', barcode: '0063100100105', category: 'Dairy' },
+      'lactantia': { name: 'Lactantia Butter 454g', brand: 'Lactantia', barcode: '0063100100105', category: 'Dairy' },
+      'chocolate milk': { name: 'Beatrice Chocolate Milk 1L', brand: 'Beatrice', barcode: '0066721006010', category: 'Dairy' },
+      'beatrice': { name: 'Beatrice Chocolate Milk 1L', brand: 'Beatrice', barcode: '0066721006010', category: 'Dairy' },
+      // Bread & Eggs
+      'bread': { name: 'PC Blue Menu Whole Grain Bread', brand: "President's Choice", barcode: '0055577100103', category: 'Bread' },
+      'whole grain': { name: 'PC Blue Menu Whole Grain Bread', brand: "President's Choice", barcode: '0055577100103', category: 'Bread' },
+      'eggs': { name: 'PC Free-Run Eggs Large 12pk', brand: "President's Choice", barcode: '0068700115010', category: 'Eggs' },
+      // Condiments
+      'ketchup': { name: 'Heinz Ketchup 750ml', brand: 'Heinz', barcode: '0057000000103', category: 'Condiments' },
+      'heinz': { name: 'Heinz Ketchup 750ml', brand: 'Heinz', barcode: '0057000000103', category: 'Condiments' },
+      'mayo': { name: "Hellmann's Mayonnaise 890ml", brand: "Hellmann's", barcode: '0041000001048', category: 'Condiments' },
+      'mayonnaise': { name: "Hellmann's Mayonnaise 890ml", brand: "Hellmann's", barcode: '0041000001048', category: 'Condiments' },
+      'hellmanns': { name: "Hellmann's Mayonnaise 890ml", brand: "Hellmann's", barcode: '0041000001048', category: 'Condiments' },
+      // Meat
+      'bacon': { name: 'Maple Leaf Bacon 375g', brand: 'Maple Leaf', barcode: '0060410001202', category: 'Meat' },
+      'maple leaf': { name: 'Maple Leaf Bacon 375g', brand: 'Maple Leaf', barcode: '0060410001202', category: 'Meat' },
+      // Beverages
+      'oj': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007', category: 'Beverages' },
+      'juice': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007', category: 'Beverages' },
+      'orange juice': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007', category: 'Beverages' },
+      'oasis': { name: 'Oasis Orange Juice 1.65L', brand: 'Oasis', barcode: '0066721008007', category: 'Beverages' },
+      'coffee': { name: 'PC Whole Bean Coffee 340g', brand: "President's Choice", barcode: '0068700100307', category: 'Beverages' },
+      // Cereal & Snacks
+      'cheerios': { name: 'Cheerios Cereal 430g', brand: 'General Mills', barcode: '006038388860', category: 'Cereal' },
+      'cereal': { name: 'Cheerios Cereal 430g', brand: 'General Mills', barcode: '006038388860', category: 'Cereal' },
+      'chips': { name: "Lay's Classic Chips 235g", brand: "Lay's", barcode: '006038301107', category: 'Snacks' },
+      'lays': { name: "Lay's Classic Chips 235g", brand: "Lay's", barcode: '006038301107', category: 'Snacks' },
+      // Pasta & Soup
+      'kd': { name: 'Kraft Dinner Original', brand: 'Kraft', barcode: '0057000012847', category: 'Pasta' },
+      'kraft dinner': { name: 'Kraft Dinner Original', brand: 'Kraft', barcode: '0057000012847', category: 'Pasta' },
+      'mac and cheese': { name: 'Kraft Dinner Original', brand: 'Kraft', barcode: '0057000012847', category: 'Pasta' },
+      'chicken broth': { name: 'PC Loads of Chicken Broth 900ml', brand: "President's Choice", barcode: '0068700003004', category: 'Soup' },
+      'broth': { name: 'PC Loads of Chicken Broth 900ml', brand: "President's Choice", barcode: '0068700003004', category: 'Soup' },
+      'soup': { name: 'PC Loads of Chicken Broth 900ml', brand: "President's Choice", barcode: '0068700003004', category: 'Soup' },
+      // Frozen
+      'pizza': { name: 'Compliments Frozen Pizza', brand: 'Compliments', barcode: '0055742352104', category: 'Frozen' },
+      'frozen pizza': { name: 'Compliments Frozen Pizza', brand: 'Compliments', barcode: '0055742352104', category: 'Frozen' },
+      'compliments': { name: 'Compliments Frozen Pizza', brand: 'Compliments', barcode: '0055742352104', category: 'Frozen' },
     };
 
     // All demo stores keyed by FSA → city so fallback matches the user's area
@@ -853,9 +882,10 @@
 
     const BASE_PRICES = {
       '0068700100208': 6.99, '0055577100103': 3.49, '0068700115010': 5.49,
-      '0063100100105': 5.99, '0057000000103': 4.49, '0060410001202': 7.99,
-      '0066721008007': 4.29, '006038388860': 5.99, '006038301107': 4.29,
-      '0057000012847': 1.99, '0068700100307': 9.99,
+      '0063100100105': 5.99, '0057000000103': 4.49, '0041000001048': 6.49,
+      '0060410001202': 7.99, '0066721008007': 4.29, '006038388860': 5.99,
+      '006038301107': 4.29, '0057000012847': 1.99, '0068700100307': 9.99,
+      '0066721006010': 2.99, '0055742352104': 6.99, '0068700003004': 3.49,
     };
 
     function scrollToSearch() {
@@ -1314,7 +1344,7 @@
           store: null,
           source: 'product',
           barcode: p.barcode,
-          category: key,
+          category: p.category || key,
         }));
 
       // Deduplicate by barcode
