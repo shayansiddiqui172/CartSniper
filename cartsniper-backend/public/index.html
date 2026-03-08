@@ -955,9 +955,11 @@
     let html5QrCode = null;
     let photoStream = null;
     let capturedImageBase64 = null;
+    let scanLocked = false; // prevent duplicate scans
 
     function openBarcodeScanner() {
       if (!locationSet) { document.getElementById('postal-input').focus(); document.getElementById('search-area').scrollIntoView({behavior:'smooth'}); return; }
+      scanLocked = false;
       document.getElementById('scanner-title').textContent = 'Scan Barcode';
       document.getElementById('barcode-reader').style.display = 'block';
       document.getElementById('photo-capture').style.display = 'none';
@@ -979,19 +981,36 @@
     }
 
     async function onBarcodeScanned(decodedText) {
-      // Stop scanning immediately
+      // Guard: prevent multiple rapid-fire calls
+      if (scanLocked) return;
+      scanLocked = true;
+
+      // Stop the camera scanner
       if (html5QrCode) {
-        await html5QrCode.stop().catch(() => {});
+        html5QrCode.stop().catch(() => {});
       }
+
+      // Hide the camera feed, show progress in-modal
+      document.getElementById('barcode-reader').style.display = 'none';
+      document.getElementById('manual-barcode-entry').style.display = 'none';
       document.getElementById('scanner-status').innerHTML =
-        `<span style="color:#1a7a3c;font-weight:600;">Barcode found: ${decodedText}</span><br/>Looking up product...`;
+        `<div style="padding:30px 0;text-align:center;">
+          <div style="font-size:16px;font-weight:700;color:#1a7a3c;margin-bottom:6px;">Barcode: ${decodedText}</div>
+          <div style="color:#6b7280;">Looking up product...</div>
+          <div style="margin-top:14px;">
+            <svg class="animate-spin" style="color:#1a7a3c;display:inline-block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="28" height="28">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+          </div>
+        </div>`;
 
       try {
         const res = await fetch(`${API_URL}/scan/barcode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ barcode: decodedText }),
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(15000),
         });
 
         if (res.ok) {
@@ -1002,19 +1021,28 @@
           document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
           updateStats(data.prices || []);
         } else {
+          // Show error but let them retry
+          scanLocked = false;
+          document.getElementById('barcode-reader').style.display = 'block';
+          document.getElementById('manual-barcode-entry').style.display = 'block';
           document.getElementById('scanner-status').innerHTML =
-            `<span style="color:#dc2626;">Product not found for barcode ${decodedText}.</span><br/>Try searching by name or taking a photo instead.`;
+            `<span style="color:#dc2626;font-weight:600;">Product not found for barcode ${decodedText}.</span><br/>Try a different barcode or enter one manually.`;
+          // Restart scanner
+          try { html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 }, onBarcodeScanned, () => {}); } catch(e) {}
         }
       } catch (err) {
+        scanLocked = false;
+        document.getElementById('barcode-reader').style.display = 'block';
+        document.getElementById('manual-barcode-entry').style.display = 'block';
         document.getElementById('scanner-status').innerHTML =
-          `<span style="color:#dc2626;">Lookup failed. Try again or search by name.</span>`;
+          `<span style="color:#dc2626;font-weight:600;">Lookup timed out.</span><br/>Try entering the barcode number manually below.`;
+        try { html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 }, onBarcodeScanned, () => {}); } catch(e) {}
       }
     }
 
     async function submitManualBarcode() {
       const code = document.getElementById('manual-barcode-input').value.trim();
       if (!code) return;
-      // Reuse the same scan flow
       await onBarcodeScanned(code);
     }
 
