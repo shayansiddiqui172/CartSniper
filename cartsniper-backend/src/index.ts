@@ -8,6 +8,7 @@ import scanRoutes from './api/routes/scan';
 import pricesRoutes from './api/routes/prices';
 import cartRoutes from './api/routes/cart';
 import alertsRoutes from './api/routes/alerts';
+import flyerRoutes from './api/routes/flyer';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/scan', scanRoutes);
 app.use('/prices', pricesRoutes);
 app.use('/cart', cartRoutes);
 app.use('/alerts', alertsRoutes);
+app.use('/flyer', flyerRoutes);
 
 // Fallback: serve index.html for any non-API route
 app.get('*', (req, res) => {

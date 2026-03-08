@@ -206,6 +206,230 @@
       scrollbar-width: none;
     }
     .stores-scroll::-webkit-scrollbar { display: none; }
+
+    /* ─── FLYER VIEWER ─── */
+    .flyer-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0,0,0,0.82);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+    }
+    .flyer-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .flyer-header {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      color: #fff;
+    }
+    .flyer-header-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .flyer-header-page {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
+    .flyer-close-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .flyer-close-btn:hover { background: rgba(255,255,255,0.3); }
+    .flyer-viewer {
+      position: relative;
+      width: 100%;
+      max-width: 820px;
+      max-height: calc(100vh - 140px);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .flyer-page-container {
+      position: relative;
+      width: 100%;
+      overflow: auto;
+    }
+    .flyer-page-container img {
+      width: 100%;
+      display: block;
+    }
+    .flyer-highlight {
+      position: absolute;
+      border: 3px solid #22a64f;
+      border-radius: 8px;
+      background: rgba(34, 166, 79, 0.10);
+      box-shadow: 0 0 0 4px rgba(34, 166, 79, 0.20), 0 0 20px rgba(34, 166, 79, 0.25);
+      cursor: pointer;
+      z-index: 10;
+      transition: box-shadow 0.3s;
+      animation: flyerPulse 2s ease-in-out infinite;
+    }
+    .flyer-highlight:hover {
+      box-shadow: 0 0 0 6px rgba(34, 166, 79, 0.30), 0 0 30px rgba(34, 166, 79, 0.35);
+    }
+    @keyframes flyerPulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(34,166,79,0.20), 0 0 20px rgba(34,166,79,0.25); }
+      50% { box-shadow: 0 0 0 8px rgba(34,166,79,0.15), 0 0 35px rgba(34,166,79,0.30); }
+    }
+    .flyer-confidence-badge {
+      position: absolute;
+      top: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+      z-index: 11;
+    }
+    .flyer-confidence-badge.high { background: #dcfce7; color: #15803d; }
+    .flyer-confidence-badge.medium { background: #fef9c3; color: #854d0e; }
+    .flyer-confidence-badge.low { background: #fee2e2; color: #991b1b; }
+    .flyer-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.55);
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .flyer-nav-btn:hover { background: rgba(0,0,0,0.75); }
+    .flyer-nav-btn.left { left: 12px; }
+    .flyer-nav-btn.right { right: 12px; }
+    .flyer-nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .flyer-fallback {
+      padding: 40px 24px;
+      text-align: center;
+      color: #666;
+    }
+    .flyer-fallback-icon { font-size: 48px; margin-bottom: 12px; }
+    .flyer-fallback-msg { font-size: 15px; line-height: 1.6; max-width: 400px; margin: 0 auto; }
+
+    /* ─── PRODUCT DETAIL MODAL ─── */
+    .detail-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .detail-modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .detail-modal {
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-width: 560px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 0;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .detail-modal-overlay.active .detail-modal {
+      transform: translateY(0);
+    }
+    .detail-modal-handle {
+      width: 36px;
+      height: 4px;
+      background: #ddd;
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+    .detail-modal-header {
+      padding: 16px 20px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .detail-modal-body { padding: 0 20px 24px; }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0ebe0;
+      font-size: 14px;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #888; font-weight: 500; }
+    .detail-value { color: #333; font-weight: 600; text-align: right; }
+    .copy-btn {
+      background: #f5f5f0;
+      border: 1px solid #e0d8c8;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #333;
+    }
+    .copy-btn:hover { background: #eee8d8; border-color: #1a7a3c; color: #1a7a3c; }
+    .copy-btn.copied { background: #dcfce7; border-color: #22a64f; color: #15803d; }
+    .cashier-summary {
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #15803d;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
+    .deal-card { cursor: pointer; }
+
+    @media (max-width: 640px) {
+      .flyer-viewer { border-radius: 8px 8px 0 0; max-height: calc(100vh - 100px); }
+      .flyer-header { padding: 10px 14px; }
+      .detail-modal { max-width: 100%; }
+    }
   </style>
 </head>
 
@@ -256,20 +480,16 @@
 
     <!-- Search bar -->
     <div id="search-area" class="max-w-lg mx-auto">
-      <div class="flex gap-3" style="position:relative;">
-        <div style="position:relative; flex:1;">
-          <input
-            id="postal-input"
-            type="text"
-            class="search-input"
-            placeholder="Enter postal code (e.g. N2G 1A1)"
-            maxlength="7"
-            autocomplete="off"
-            oninput="onPostalInput(this.value)"
-            onkeydown="handlePostalKey(event)"
-          />
-          <div id="postal-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ddd6c8; border-top:none; border-radius:0 0 8px 8px; z-index:50; box-shadow:0 4px 12px rgba(0,0,0,0.08); max-height:200px; overflow-y:auto;"></div>
-        </div>
+      <div class="flex gap-3">
+        <input
+          id="postal-input"
+          type="text"
+          class="search-input"
+          placeholder="Enter postal code (e.g. N2G 1A1)"
+          maxlength="7"
+          autocomplete="postal-code"
+          onkeydown="if(event.key==='Enter') setLocation()"
+        />
         <button class="btn-primary" onclick="setLocation()">Set Location</button>
       </div>
       <p id="location-hint" class="text-sm text-gray-400 mt-2">Enter your postal code to load real flyer deals from your area</p>
@@ -394,6 +614,37 @@
     </div>
   </footer>
 
+  <!-- ─── FLYER VIEWER OVERLAY ─── -->
+  <div id="flyer-overlay" class="flyer-overlay">
+    <div class="flyer-header">
+      <div>
+        <div class="flyer-header-title" id="flyer-title">Weekly Flyer</div>
+        <div class="flyer-header-page" id="flyer-page-label">Page 1 of 3</div>
+      </div>
+      <button class="flyer-close-btn" onclick="closeFlyerViewer()" title="Close">✕</button>
+    </div>
+    <div class="flyer-viewer" id="flyer-viewer">
+      <button class="flyer-nav-btn left" id="flyer-prev" onclick="navigateFlyerPage(-1)">‹</button>
+      <button class="flyer-nav-btn right" id="flyer-next" onclick="navigateFlyerPage(1)">›</button>
+      <div class="flyer-page-container" id="flyer-page-container"></div>
+    </div>
+  </div>
+
+  <!-- ─── PRODUCT DETAIL MODAL ─── -->
+  <div id="detail-modal-overlay" class="detail-modal-overlay" onclick="closeDetailModal(event)">
+    <div class="detail-modal" id="detail-modal">
+      <div class="detail-modal-handle"></div>
+      <div class="detail-modal-header">
+        <div>
+          <h3 id="detail-product-name" style="font-weight:700;font-size:18px;color:#222;margin:0;"></h3>
+          <p id="detail-store-name" style="font-size:13px;color:#888;margin:4px 0 0;"></p>
+        </div>
+        <button onclick="closeDetailModal()" style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;padding:0;">✕</button>
+      </div>
+      <div class="detail-modal-body" id="detail-modal-body"></div>
+    </div>
+  </div>
+
   <!-- ─── SCRIPT ─── -->
   <script>
     const API_URL = '';  // Same origin — served by Express
@@ -454,165 +705,7 @@
     // Ontario FSAs start with K, L, M, N, or P
     const ONTARIO_POSTAL_RE = /^([KLMNP][0-9][A-Z])\s?([0-9][A-Z][0-9])$/i;
 
-    // Static Ontario FSA lookup — instant, no API needed
-    const ONTARIO_FSA = {
-      // Ottawa / Eastern Ontario (K)
-      K1A:'Ottawa',K1B:'Ottawa',K1C:'Ottawa',K1E:'Ottawa',K1G:'Ottawa',K1H:'Ottawa',K1J:'Ottawa',K1K:'Ottawa',K1L:'Ottawa',K1M:'Ottawa',K1N:'Ottawa',K1P:'Ottawa',K1R:'Ottawa',K1S:'Ottawa',K1T:'Ottawa',K1V:'Ottawa',K1W:'Ottawa',K1Y:'Ottawa',K1Z:'Ottawa',
-      K2A:'Ottawa',K2B:'Ottawa',K2C:'Ottawa',K2E:'Ottawa',K2G:'Nepean',K2H:'Nepean',K2J:'Barrhaven',K2K:'Kanata',K2L:'Kanata',K2M:'Kanata',K2P:'Ottawa',K2R:'Ottawa',K2S:'Stittsville',K2T:'Kanata',K2V:'Ottawa',K2W:'Ottawa',
-      K4A:'Ottawa',K4B:'Ottawa',K4C:'Ottawa',K4K:'Rockland',K4M:'Manotick',K4P:'Greely',K4R:'Richmond',
-      K6A:'Hawkesbury',K6H:'Cornwall',K6J:'Cornwall',K6K:'Cornwall',K6T:'Brockville',K6V:'Brockville',
-      K7A:'Perth',K7C:'Carleton Place',K7G:'Smiths Falls',K7H:'Smiths Falls',K7K:'Kingston',K7L:'Kingston',K7M:'Kingston',K7N:'Kingston',K7P:'Kingston',K7R:'Kingston',K7S:'Napanee',K7V:'Renfrew',
-      K8A:'Pembroke',K8B:'Pembroke',K8H:'Pembroke',K8N:'Belleville',K8P:'Belleville',K8R:'Belleville',K8V:'Trenton',
-      K9A:'Cobourg',K9H:'Peterborough',K9J:'Peterborough',K9K:'Peterborough',K9L:'Peterborough',K9V:'Lindsay',
-      // GTA / Hamilton / Kitchener (L)
-      L1A:'Port Hope',L1B:'Newcastle',L1C:'Bowmanville',L1E:'Courtice',L1G:'Oshawa',L1H:'Oshawa',L1J:'Oshawa',L1K:'Oshawa',L1L:'Oshawa',L1M:'Oshawa',L1N:'Whitby',L1P:'Whitby',L1R:'Whitby',L1S:'Ajax',L1T:'Ajax',L1V:'Pickering',L1W:'Pickering',L1X:'Pickering',L1Y:'Pickering',L1Z:'Pickering',
-      L2A:'Fort Erie',L2E:'Niagara Falls',L2G:'Niagara Falls',L2H:'Niagara Falls',L2J:'Niagara Falls',L2M:'St. Catharines',L2N:'St. Catharines',L2P:'St. Catharines',L2R:'St. Catharines',L2S:'St. Catharines',L2T:'St. Catharines',L2V:'St. Catharines',L2W:'St. Catharines',
-      L3A:'Grimsby',L3B:'Welland',L3C:'Welland',L3K:'Port Colborne',L3M:'Dunnville',L3P:'Markham',L3R:'Markham',L3S:'Markham',L3T:'Thornhill',L3V:'Orillia',L3X:'Newmarket',L3Y:'Newmarket',L3Z:'Newmarket',
-      L4A:'Stouffville',L4B:'Richmond Hill',L4C:'Richmond Hill',L4E:'Oak Ridges',L4G:'Aurora',L4H:'Woodbridge',L4J:'Thornhill',L4K:'Vaughan',L4L:'Woodbridge',L4M:'Barrie',L4N:'Barrie',L4P:'Keswick',L4R:'Midland',L4S:'Richmond Hill',L4T:'Mississauga',L4V:'Mississauga',L4W:'Mississauga',L4X:'Mississauga',L4Y:'Mississauga',L4Z:'Mississauga',
-      L5A:'Mississauga',L5B:'Mississauga',L5C:'Mississauga',L5E:'Mississauga',L5G:'Mississauga',L5H:'Mississauga',L5J:'Mississauga',L5K:'Mississauga',L5L:'Mississauga',L5M:'Mississauga',L5N:'Mississauga',L5P:'Mississauga',L5R:'Mississauga',L5S:'Mississauga',L5T:'Mississauga',L5V:'Mississauga',L5W:'Mississauga',
-      L6A:'Maple',L6B:'Markham',L6C:'Markham',L6E:'Markham',L6G:'Markham',L6H:'Oakville',L6J:'Oakville',L6K:'Oakville',L6L:'Oakville',L6M:'Oakville',L6P:'Brampton',L6R:'Brampton',L6S:'Brampton',L6T:'Brampton',L6V:'Brampton',L6W:'Brampton',L6X:'Brampton',L6Y:'Brampton',L6Z:'Brampton',
-      L7A:'Brampton',L7B:'King City',L7C:'Caledon',L7E:'Bolton',L7G:'Georgetown',L7J:'Acton',L7K:'Orangeville',L7L:'Burlington',L7M:'Burlington',L7N:'Burlington',L7P:'Burlington',L7R:'Burlington',L7S:'Burlington',L7T:'Burlington',
-      L8E:'Hamilton',L8G:'Hamilton',L8H:'Hamilton',L8J:'Hamilton',L8K:'Hamilton',L8L:'Hamilton',L8M:'Hamilton',L8N:'Hamilton',L8P:'Hamilton',L8R:'Hamilton',L8S:'Hamilton',L8T:'Hamilton',L8V:'Hamilton',L8W:'Hamilton',
-      L9A:'Hamilton',L9B:'Hamilton',L9C:'Hamilton',L9G:'Ancaster',L9H:'Dundas',L9J:'Milton',L9K:'Hamilton',L9L:'Uxbridge',L9M:'Penetanguishene',L9N:'Bradford',L9P:'Uxbridge',L9R:'Innisfil',L9S:'Innisfil',L9T:'Milton',L9V:'Shelburne',L9W:'Orangeville',L9X:'Barrie',L9Y:'Collingwood',L9Z:'Wasaga Beach',
-      // Toronto (M)
-      M1B:'Scarborough',M1C:'Scarborough',M1E:'Scarborough',M1G:'Scarborough',M1H:'Scarborough',M1J:'Scarborough',M1K:'Scarborough',M1L:'Scarborough',M1M:'Scarborough',M1N:'Scarborough',M1P:'Scarborough',M1R:'Scarborough',M1S:'Scarborough',M1T:'Scarborough',M1V:'Scarborough',M1W:'Scarborough',M1X:'Scarborough',
-      M2H:'North York',M2J:'North York',M2K:'North York',M2L:'North York',M2M:'North York',M2N:'North York',M2P:'North York',M2R:'North York',
-      M3A:'North York',M3B:'North York',M3C:'North York',M3H:'North York',M3J:'North York',M3K:'North York',M3L:'North York',M3M:'North York',M3N:'North York',
-      M4A:'East York',M4B:'East York',M4C:'East York',M4E:'East Toronto',M4G:'Leaside',M4H:'East York',M4J:'East York',M4K:'East Toronto',M4L:'East Toronto',M4M:'East Toronto',M4N:'Lawrence Park',M4P:'Midtown Toronto',M4R:'North Toronto',M4S:'Davisville',M4T:'Midtown Toronto',M4V:'Deer Park',M4W:'Rosedale',M4X:'Cabbagetown',M4Y:'Church-Wellesley',
-      M5A:'Distillery District',M5B:'Garden District',M5C:'St. Lawrence',M5E:'Harbourfront',M5G:'Discovery District',M5H:'Financial District',M5J:'Harbourfront',M5K:'Financial District',M5L:'Commerce Court',M5M:'Bedford Park',M5N:'Glencairn',M5P:'Forest Hill',M5R:'The Annex',M5S:'University of Toronto',M5T:'Kensington Market',M5V:'Downtown Toronto',M5W:'Downtown Toronto',M5X:'Downtown Toronto',
-      M6A:'Lawrence Heights',M6B:'Glencairn',M6C:'Cedarvale',M6E:'Caledonia',M6G:'Christie Pits',M6H:'Dufferin Grove',M6J:'Little Portugal',M6K:'Parkdale',M6L:'Keelesdale',M6M:'Mount Dennis',M6N:'Runnymede',M6P:'High Park',M6R:'Roncesvalles',M6S:'Swansea',
-      M7A:"Queen's Park",M8V:'Etobicoke',M8W:'Etobicoke',M8X:'Etobicoke',M8Y:'Etobicoke',M8Z:'Etobicoke',
-      M9A:'Etobicoke',M9B:'Etobicoke',M9C:'Etobicoke',M9L:'Humber Summit',M9M:'Humber Summit',M9N:'Weston',M9P:'Etobicoke',M9R:'Etobicoke',M9V:'Etobicoke',M9W:'Etobicoke',
-      // Southwestern Ontario (N)
-      N1E:'Guelph',N1G:'Guelph',N1H:'Guelph',N1K:'Guelph',N1L:'Guelph',N1M:'Fergus',N1P:'Guelph',N1R:'Brantford',N1S:'Brantford',N1T:'Brantford',
-      N2A:'Kitchener',N2B:'Kitchener',N2C:'Kitchener',N2E:'Kitchener',N2G:'Kitchener',N2H:'Kitchener',N2J:'Waterloo',N2K:'Waterloo',N2L:'Waterloo',N2M:'Kitchener',N2N:'Kitchener',N2P:'Kitchener',N2R:'Kitchener',N2T:'Waterloo',N2V:'Waterloo',
-      N3A:'Paris',N3B:'Caledonia',N3C:'Cambridge',N3E:'Cambridge',N3H:'Cambridge',N3L:'Paris',N3P:'Brantford',N3R:'Brantford',N3S:'Brantford',N3T:'Brantford',N3V:'Brantford',N3W:'Caledonia',N3Y:'Simcoe',
-      N4B:'Simcoe',N4G:'Tillsonburg',N4K:'Owen Sound',N4L:'Meaford',N4N:'Hanover',N4S:'Woodstock',N4T:'Woodstock',N4V:'Woodstock',N4W:'Woodstock',N4X:'Woodstock',
-      N5A:'St. Thomas',N5H:'Aylmer',N5P:'St. Thomas',N5R:'St. Thomas',N5V:'London',N5W:'London',N5X:'London',N5Y:'London',N5Z:'London',
-      N6A:'London',N6B:'London',N6C:'London',N6E:'London',N6G:'London',N6H:'London',N6J:'London',N6K:'London',N6L:'London',N6M:'London',N6N:'London',N6P:'London',
-      N7A:'Sarnia',N7G:'Sarnia',N7S:'Sarnia',N7T:'Sarnia',N7V:'Sarnia',N7W:'Sarnia',N7X:'Sarnia',
-      N8A:'Tecumseh',N8H:'Windsor',N8M:'Windsor',N8N:'Windsor',N8P:'Windsor',N8R:'Windsor',N8S:'Windsor',N8T:'Windsor',N8V:'Windsor',N8W:'Windsor',N8X:'Windsor',N8Y:'Windsor',
-      N9A:'Windsor',N9B:'Windsor',N9C:'Windsor',N9E:'Windsor',N9G:'Windsor',N9H:'Windsor',N9J:'Windsor',N9K:'Windsor',N9V:'Windsor',N9Y:'Windsor',
-      // Northern Ontario (P)
-      P1A:'North Bay',P1B:'North Bay',P1C:'North Bay',P1H:'Huntsville',P1L:'Bracebridge',P1P:'Gravenhurst',
-      P2A:'Parry Sound',P2B:'Parry Sound',
-      P3A:'Sudbury',P3B:'Sudbury',P3C:'Sudbury',P3E:'Sudbury',P3G:'Sudbury',P3L:'Sudbury',P3N:'Sudbury',P3P:'Sudbury',P3Y:'Sudbury',
-      P4N:'Timmins',P4P:'Timmins',P4R:'Timmins',
-      P5A:'Sault Ste. Marie',P5B:'Sault Ste. Marie',P5C:'Sault Ste. Marie',P5E:'Sault Ste. Marie',P5N:'Sault Ste. Marie',P6A:'Sault Ste. Marie',P6B:'Sault Ste. Marie',P6C:'Sault Ste. Marie',
-      P7A:'Thunder Bay',P7B:'Thunder Bay',P7C:'Thunder Bay',P7E:'Thunder Bay',P7G:'Thunder Bay',P7J:'Thunder Bay',P7K:'Thunder Bay',P7L:'Thunder Bay',
-      P8N:'Dryden',P8T:'Kenora',P9A:'Thunder Bay',P9N:'Kenora',
-    };
-
-    let selectedSuggestionIndex = -1;
-    let currentSuggestions = [];
-
-    function onPostalInput(val) {
-      const cleaned = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      selectedSuggestionIndex = -1;
-      if (cleaned.length < 2) { closeDropdown(); return; }
-      showFSASuggestions(cleaned);
-    }
-
-    function showFSASuggestions(partial) {
-      // Try matching all 3 chars, fall back to 2 if none found
-      const prefix3 = partial.slice(0, 3);
-      const prefix2 = partial.slice(0, 2);
-      let matches = Object.entries(ONTARIO_FSA).filter(([fsa]) => fsa.startsWith(prefix3));
-      if (matches.length === 0 && partial.length >= 3) {
-        matches = Object.entries(ONTARIO_FSA).filter(([fsa]) => fsa.startsWith(prefix2));
-      }
-      matches = matches.slice(0, 8);
-
-      if (matches.length === 0) { closeDropdown(); return; }
-
-      // Deduplicate by city for cleaner display when typing just 1-2 chars
-      const seen = new Set();
-      const suggestions = [];
-      for (const [fsa, city] of matches) {
-        const key = `${fsa}-${city}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          suggestions.push({ fsa, city, prov: 'ON' });
-        }
-      }
-
-      renderDropdown(suggestions);
-    }
-
-    function renderDropdown(suggestions) {
-      const dropdown = document.getElementById('postal-dropdown');
-      currentSuggestions = suggestions;
-      if (suggestions.length === 0) { closeDropdown(); return; }
-
-      dropdown.innerHTML = suggestions.map((s, i) => `
-        <div class="postal-suggestion" data-index="${i}"
-          style="padding:10px 14px; cursor:pointer; font-size:14px; text-align:left; border-bottom:1px solid #f0ebe0; color:#333;"
-          onmouseenter="this.style.background='#f5efe4'"
-          onmouseleave="this.style.background=''"
-          onmousedown="selectSuggestion(${i})">
-          <span style="font-weight:600;">${s.fsa}</span>
-          <span style="color:#888; margin-left:8px;">${s.city}, ${s.prov}</span>
-        </div>
-      `).join('');
-      dropdown.style.display = 'block';
-    }
-
-    function selectSuggestion(index) {
-      const s = currentSuggestions[index];
-      if (!s) return;
-      // Fill in just the FSA — let the user complete the last 3 digits
-      const input = document.getElementById('postal-input');
-      const current = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      // If they've typed more than the FSA, keep their full input; otherwise fill FSA
-      input.value = current.length >= 6 ? `${s.fsa} ${current.slice(3)}` : s.fsa + ' ';
-      closeDropdown();
-      input.focus();
-    }
-
-    function closeDropdown() {
-      document.getElementById('postal-dropdown').style.display = 'none';
-      currentSuggestions = [];
-      selectedSuggestionIndex = -1;
-    }
-
-    function handlePostalKey(e) {
-      const dropdown = document.getElementById('postal-dropdown');
-      if (dropdown.style.display === 'none') {
-        if (e.key === 'Enter') setLocation();
-        return;
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, currentSuggestions.length - 1);
-        highlightSuggestion();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
-        highlightSuggestion();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedSuggestionIndex >= 0) selectSuggestion(selectedSuggestionIndex);
-        else { closeDropdown(); setLocation(); }
-      } else if (e.key === 'Escape') {
-        closeDropdown();
-      }
-    }
-
-    function highlightSuggestion() {
-      document.querySelectorAll('.postal-suggestion').forEach((el, i) => {
-        el.style.background = i === selectedSuggestionIndex ? '#f5efe4' : '';
-      });
-      if (selectedSuggestionIndex >= 0 && currentSuggestions[selectedSuggestionIndex]) {
-        document.getElementById('postal-input').value = currentSuggestions[selectedSuggestionIndex].fsa + ' ';
-      }
-    }
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', e => {
-      if (!e.target.closest('#search-area')) closeDropdown();
-    });
-
-    async function setLocation() {
+    function setLocation() {
       const raw = document.getElementById('postal-input').value.trim().toUpperCase();
       if (!raw) {
         showPostalError('Please enter a postal code.');
@@ -637,21 +730,6 @@
       document.getElementById('location-display').textContent = val;
       document.getElementById('product-search').style.display = 'block';
       document.getElementById('product-input').focus();
-
-      // Resolve city name
-      try {
-        const res = await fetch(`https://geocoder.ca/?postal=${val.replace(' ', '')}&json=1`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.standard?.city) {
-            const city = data.standard.city.replace(/\b\w/g, c => c.toUpperCase());
-            const prov = data.standard.prov || 'ON';
-            document.getElementById('location-display').textContent = `${city}, ${prov}`;
-          }
-        }
-      } catch {
-        // Keep showing postal code if geocoding fails
-      }
     }
 
     function showPostalError(msg) {
@@ -733,6 +811,321 @@
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
+    // ─── FLYER VIEWER STATE ───
+    let flyerState = {
+      currentPage: 1,
+      totalPages: 1,
+      allPages: [],
+      matchData: null,
+      productData: null,
+      storeData: null,
+      priceData: null,
+    };
+
+    // Demo flyer data for when backend is unavailable
+    const DEMO_FLYER_ITEMS = {};
+    // Build demo flyer items dynamically from DEMO_PRODUCTS
+    Object.entries(DEMO_PRODUCTS).forEach(([key, prod]) => {
+      DEMO_FLYER_ITEMS[prod.barcode] = {
+        name: prod.name,
+        brand: prod.brand,
+        size: prod.name.match(/\d+[gGmMlLkK]+/)?.[0] || null,
+        plu: String(1000 + Math.floor(Math.random() * 9000)),
+        upc: prod.barcode,
+        itemCode: 'ITM-' + Math.floor(Math.random() * 100000),
+      };
+    });
+
+    function generateDemoFlyerMatch(product, store, price) {
+      const itemInfo = DEMO_FLYER_ITEMS[product.id] || DEMO_FLYER_ITEMS[product.barcode] || {};
+      const salePrice = price.salePrice || price.effective || price.price;
+      const originalPrice = price.salePrice ? price.price : null;
+      const pageNum = 1 + Math.floor(Math.random() * 3);
+      // Sensible bounding box
+      const positions = [
+        { x: 0.05, y: 0.15, width: 0.42, height: 0.28 },
+        { x: 0.52, y: 0.15, width: 0.42, height: 0.28 },
+        { x: 0.05, y: 0.45, width: 0.42, height: 0.28 },
+        { x: 0.52, y: 0.45, width: 0.42, height: 0.28 },
+        { x: 0.05, y: 0.70, width: 0.42, height: 0.25 },
+        { x: 0.52, y: 0.70, width: 0.42, height: 0.25 },
+      ];
+      const pos = positions[Math.floor(Math.random() * positions.length)];
+
+      const now = new Date();
+      const saleStart = new Date(now); saleStart.setDate(saleStart.getDate() - 2);
+      const saleEnd = new Date(now); saleEnd.setDate(saleEnd.getDate() + 5);
+
+      return {
+        found: true,
+        match: {
+          productId: product.id || product.barcode,
+          storeId: store.slug,
+          storeName: store.name,
+          flyerId: 'demo-flyer-' + store.slug,
+          flyerTitle: store.name + ' Weekly Flyer',
+          flyerPage: pageNum,
+          flyerItemId: 'demo-item-' + Math.random().toString(36).slice(2),
+          flyerImageUrl: '/flyer-images/' + store.slug + '-page-' + pageNum + '.svg',
+          matchConfidence: 'high',
+          matchSource: 'demo_data',
+          focusTarget: { type: 'bounding_box', ...pos },
+          productDetails: {
+            name: itemInfo.name || product.name,
+            brand: itemInfo.brand || product.brand || null,
+            size: itemInfo.size || null,
+            price: salePrice,
+            originalPrice: originalPrice,
+            saleStart: saleStart.toISOString().slice(0, 10),
+            saleEnd: saleEnd.toISOString().slice(0, 10),
+            plu: itemInfo.plu || null,
+            itemCode: itemInfo.itemCode || null,
+            upc: itemInfo.upc || product.barcode || null,
+          },
+          totalPages: 3,
+          allPages: [
+            { pageNumber: 1, imageUrl: '/flyer-images/' + store.slug + '-page-1.svg' },
+            { pageNumber: 2, imageUrl: '/flyer-images/' + store.slug + '-page-2.svg' },
+            { pageNumber: 3, imageUrl: '/flyer-images/' + store.slug + '-page-3.svg' },
+          ],
+        },
+      };
+    }
+
+    async function openFlyerViewer(product, store, price) {
+      let result = null;
+
+      // Try backend first
+      try {
+        const res = await fetch(`${API_URL}/flyer/match/${encodeURIComponent(product.id)}/${encodeURIComponent(store.slug)}`, {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (res.ok) result = await res.json();
+      } catch (e) {
+        // Backend unavailable
+      }
+
+      // Fallback to demo data
+      if (!result) {
+        result = generateDemoFlyerMatch(product, store, price);
+      }
+
+      if (!result.found && result.fallback) {
+        if (result.fallback.type === 'no_flyer') {
+          showFlyerFallback(result.fallback.message, store);
+          return;
+        }
+        // flyer_only or page_only fallback
+        flyerState.allPages = result.fallback.allPages || [];
+        flyerState.totalPages = result.fallback.totalPages || 1;
+        flyerState.currentPage = result.fallback.flyerPage || 1;
+        flyerState.matchData = null;
+        flyerState.productData = product;
+        flyerState.storeData = store;
+        flyerState.priceData = price;
+        renderFlyerViewer(result.fallback.flyerTitle || store.name + ' Flyer', result.fallback.message);
+        return;
+      }
+
+      if (result.found && result.match) {
+        const m = result.match;
+        flyerState.allPages = m.allPages || [];
+        flyerState.totalPages = m.totalPages || flyerState.allPages.length;
+        flyerState.currentPage = m.flyerPage || 1;
+        flyerState.matchData = m;
+        flyerState.productData = product;
+        flyerState.storeData = store;
+        flyerState.priceData = price;
+        renderFlyerViewer(m.flyerTitle || store.name + ' Weekly Flyer');
+      }
+    }
+
+    function showFlyerFallback(message, store) {
+      const overlay = document.getElementById('flyer-overlay');
+      document.getElementById('flyer-title').textContent = store.name;
+      document.getElementById('flyer-page-label').textContent = '';
+      const container = document.getElementById('flyer-page-container');
+      container.innerHTML = `
+        <div class="flyer-fallback">
+          <div class="flyer-fallback-icon">📰</div>
+          <p class="flyer-fallback-msg">${message}</p>
+        </div>
+      `;
+      document.getElementById('flyer-prev').style.display = 'none';
+      document.getElementById('flyer-next').style.display = 'none';
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function renderFlyerViewer(title, fallbackMsg) {
+      const overlay = document.getElementById('flyer-overlay');
+      document.getElementById('flyer-title').textContent = title;
+      updatePageLabel();
+      renderCurrentPage(fallbackMsg);
+      overlay.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function updatePageLabel() {
+      document.getElementById('flyer-page-label').textContent =
+        `Page ${flyerState.currentPage} of ${flyerState.totalPages}`;
+      document.getElementById('flyer-prev').disabled = flyerState.currentPage <= 1;
+      document.getElementById('flyer-next').disabled = flyerState.currentPage >= flyerState.totalPages;
+      document.getElementById('flyer-prev').style.display = flyerState.totalPages > 1 ? 'flex' : 'none';
+      document.getElementById('flyer-next').style.display = flyerState.totalPages > 1 ? 'flex' : 'none';
+    }
+
+    function renderCurrentPage(fallbackMsg) {
+      const container = document.getElementById('flyer-page-container');
+      const page = flyerState.allPages.find(p => p.pageNumber === flyerState.currentPage);
+
+      if (!page) {
+        container.innerHTML = '<div class="flyer-fallback"><p class="flyer-fallback-msg">Page not available</p></div>';
+        return;
+      }
+
+      let html = `<div style="position:relative;"><img src="${page.imageUrl}" alt="Flyer page ${page.pageNumber}" style="width:100%;display:block;min-height:500px;background:#fafaf5;" />`;
+
+      // Draw highlight if this is the matched page
+      const m = flyerState.matchData;
+      if (m && m.flyerPage === flyerState.currentPage && m.focusTarget) {
+        const ft = m.focusTarget;
+        const conf = m.matchConfidence || 'medium';
+        const badgeLabels = { high: '✓ Exact Match', medium: '~ Likely Match', low: '? Possible Match' };
+        html += `
+          <div class="flyer-highlight" id="flyer-highlight"
+               onclick="showProductDetail()"
+               title="Click for details"
+               style="left:${ft.x * 100}%;top:${ft.y * 100}%;width:${ft.width * 100}%;height:${ft.height * 100}%;">
+            <span class="flyer-confidence-badge ${conf}">${badgeLabels[conf]}</span>
+          </div>`;
+      }
+
+      html += '</div>';
+
+      // Add fallback message if any
+      if (fallbackMsg) {
+        html += `<div style="padding:12px 16px;background:#fef9c3;border-top:1px solid #fde68a;font-size:13px;color:#854d0e;text-align:center;">${fallbackMsg}</div>`;
+      }
+
+      container.innerHTML = html;
+
+      // Scroll highlight into view
+      setTimeout(() => {
+        const hl = document.getElementById('flyer-highlight');
+        if (hl) hl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+
+    function navigateFlyerPage(dir) {
+      const newPage = flyerState.currentPage + dir;
+      if (newPage < 1 || newPage > flyerState.totalPages) return;
+      flyerState.currentPage = newPage;
+      updatePageLabel();
+      renderCurrentPage();
+    }
+
+    function closeFlyerViewer() {
+      document.getElementById('flyer-overlay').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('flyer-overlay').classList.contains('active')) return;
+      if (e.key === 'Escape') closeFlyerViewer();
+      if (e.key === 'ArrowLeft') navigateFlyerPage(-1);
+      if (e.key === 'ArrowRight') navigateFlyerPage(1);
+    });
+
+    // ─── PRODUCT DETAIL MODAL ───
+    function showProductDetail() {
+      const m = flyerState.matchData;
+      if (!m) return;
+      const d = m.productDetails;
+      const store = flyerState.storeData || {};
+
+      document.getElementById('detail-product-name').textContent = d.name;
+      document.getElementById('detail-store-name').textContent = `${STORE_EMOJIS[store.slug] || '🏪'} ${m.storeName || store.name || 'Store'}`;
+
+      let rows = '';
+      const addRow = (label, value) => {
+        if (value) rows += `<div class="detail-row"><span class="detail-label">${label}</span><span class="detail-value">${value}</span></div>`;
+      };
+
+      // Price row with sale styling
+      if (d.originalPrice && d.originalPrice > d.price) {
+        rows += `<div class="detail-row"><span class="detail-label">Flyer Price</span><span class="detail-value"><span style="text-decoration:line-through;color:#aaa;margin-right:8px;">$${d.originalPrice.toFixed(2)}</span><span style="color:#15803d;font-size:18px;">$${d.price.toFixed(2)}</span></span></div>`;
+      } else {
+        addRow('Flyer Price', `$${d.price.toFixed(2)}`);
+      }
+
+      addRow('Brand', d.brand);
+      addRow('Size / Quantity', d.size);
+      if (d.saleStart && d.saleEnd) addRow('Sale Dates', `${d.saleStart} to ${d.saleEnd}`);
+      addRow('PLU', d.plu);
+      addRow('UPC', d.upc);
+      addRow('Item Code', d.itemCode);
+
+      const conf = m.matchConfidence;
+      const confLabels = { high: '✓ High Confidence', medium: '~ Medium Confidence', low: '? Low Confidence' };
+      const confColors = { high: '#15803d', medium: '#854d0e', low: '#991b1b' };
+      rows += `<div class="detail-row"><span class="detail-label">Match</span><span class="detail-value" style="color:${confColors[conf]}">${confLabels[conf]}</span></div>`;
+
+      // Copy buttons
+      rows += '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">';
+      if (d.plu) {
+        rows += `<button class="copy-btn" onclick="copyToClipboard('${d.plu}', this)">📋 Copy PLU</button>`;
+      }
+      rows += `<button class="copy-btn" onclick="copyProductDetails(this)">📄 Copy Details</button>`;
+      rows += '</div>';
+
+      // Cashier summary
+      const summary = generateCashierSummary();
+      rows += `<div class="cashier-summary">
+        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:#166534;margin-bottom:6px;">CASHIER-FRIENDLY SUMMARY</div>
+        ${summary}
+      </div>`;
+
+      document.getElementById('detail-modal-body').innerHTML = rows;
+      document.getElementById('detail-modal-overlay').classList.add('active');
+    }
+
+    function closeDetailModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      document.getElementById('detail-modal-overlay').classList.remove('active');
+    }
+
+    function copyToClipboard(text, btn) {
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1500);
+      });
+    }
+
+    function copyProductDetails(btn) {
+      const summary = generateCashierSummary();
+      navigator.clipboard.writeText(summary).then(() => {
+        btn.classList.add('copied');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = orig; }, 1500);
+      });
+    }
+
+    function generateCashierSummary() {
+      const m = flyerState.matchData;
+      if (!m) return '';
+      const d = m.productDetails;
+      let s = `${m.storeName} — ${d.name}`;
+      if (d.size) s += ` ${d.size}`;
+      s += ` — $${d.price.toFixed(2)}`;
+      if (d.plu) s += ` — PLU: ${d.plu}`;
+      return s;
+    }
+
     function renderResults(query, data) {
       const section = document.getElementById('results-section');
       const grid = document.getElementById('results-grid');
@@ -774,14 +1167,25 @@
                 <p class="text-xs text-gray-400 mt-0.5">${store.address || ''}</p>
               </div>
             </div>
-            <div class="text-right">
-              ${onSale ? `<p class="text-sm text-gray-400 line-through">$${p.price.toFixed(2)}</p>` : ''}
-              <p class="text-2xl font-bold" style="color:${isBest ? '#1a7a3c' : '#222'}">$${(p.effective).toFixed(2)}</p>
-              ${onSale ? `<p class="text-xs" style="color:#1a7a3c">Save $${savings}</p>` : ''}
-              <p class="text-xs mt-1 ${p.inStock ? 'text-green-600' : 'text-red-400'}">${p.inStock ? '● In stock' : '○ Out of stock'}</p>
+            <div class="text-right flex items-center gap-3">
+              <div>
+                ${onSale ? `<p class="text-sm text-gray-400 line-through">$${p.price.toFixed(2)}</p>` : ''}
+                <p class="text-2xl font-bold" style="color:${isBest ? '#1a7a3c' : '#222'}">$${(p.effective).toFixed(2)}</p>
+                ${onSale ? `<p class="text-xs" style="color:#1a7a3c">Save $${savings}</p>` : ''}
+                <p class="text-xs mt-1 ${p.inStock ? 'text-green-600' : 'text-red-400'}">${p.inStock ? '● In stock' : '○ Out of stock'}</p>
+              </div>
+              <div style="color:#1a7a3c;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;padding:6px 12px;border:1px solid #d4e8d9;border-radius:8px;white-space:nowrap;">
+                📰 View Flyer
+              </div>
             </div>
           </div>
         `;
+
+        // Make the whole card clickable to open flyer
+        card.addEventListener('click', () => {
+          openFlyerViewer(product, store, p);
+        });
+
         grid.appendChild(card);
       });
 
