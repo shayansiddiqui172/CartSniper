@@ -1,5 +1,8 @@
 /// <reference types="node" />
 import { PrismaClient } from '@prisma/client';
+import { extractFlyerItems, ExtractedFlyerItem } from '../src/integrations/flyerProcessor';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -79,39 +82,72 @@ const basePrices: Record<string, number> = {
   '0066721006010': 2.99,
 };
 
-// Flyer page layouts
-const FLYER_LAYOUTS = [
-  [
-    { x: 0.02, y: 0.02, width: 0.47, height: 0.30 },
-    { x: 0.51, y: 0.02, width: 0.47, height: 0.30 },
-    { x: 0.02, y: 0.34, width: 0.47, height: 0.30 },
-    { x: 0.51, y: 0.34, width: 0.47, height: 0.30 },
-    { x: 0.02, y: 0.66, width: 0.47, height: 0.30 },
-    { x: 0.51, y: 0.66, width: 0.47, height: 0.30 },
-  ],
-  [
-    { x: 0.02, y: 0.02, width: 0.96, height: 0.40 },
-    { x: 0.02, y: 0.44, width: 0.47, height: 0.26 },
-    { x: 0.51, y: 0.44, width: 0.47, height: 0.26 },
-    { x: 0.02, y: 0.72, width: 0.47, height: 0.26 },
-    { x: 0.51, y: 0.72, width: 0.47, height: 0.26 },
-  ],
-  [
-    { x: 0.02, y: 0.02, width: 0.30, height: 0.46 },
-    { x: 0.34, y: 0.02, width: 0.30, height: 0.46 },
-    { x: 0.66, y: 0.02, width: 0.30, height: 0.46 },
-    { x: 0.02, y: 0.50, width: 0.30, height: 0.46 },
-    { x: 0.34, y: 0.50, width: 0.30, height: 0.46 },
-    { x: 0.66, y: 0.50, width: 0.30, height: 0.46 },
-  ],
+// Chain slug → store name mapping for flyer images
+const CHAIN_FLYERS: { chain: string; storeName: string }[] = [
+  { chain: 'walmart', storeName: 'Walmart' },
+  { chain: 'loblaws', storeName: 'Loblaws' },
+  { chain: 'nofrills', storeName: 'No Frills' },
+  { chain: 'metro', storeName: 'Metro' },
+  { chain: 'freshco', storeName: 'FreshCo' },
 ];
 
-function flyerPageImageUrl(storeSlug: string, pageNum: number): string {
-  return `/flyer-images/${storeSlug}-page-${pageNum}.svg`;
-}
+// Fallback mock items when Gemini is unavailable or image missing
+const FALLBACK_LAYOUTS = [
+  { x: 0.02, y: 0.02, width: 0.47, height: 0.30 },
+  { x: 0.51, y: 0.02, width: 0.47, height: 0.30 },
+  { x: 0.02, y: 0.34, width: 0.47, height: 0.30 },
+  { x: 0.51, y: 0.34, width: 0.47, height: 0.30 },
+  { x: 0.02, y: 0.66, width: 0.47, height: 0.30 },
+  { x: 0.51, y: 0.66, width: 0.47, height: 0.30 },
+];
 
 function generatePlu(): string {
   return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+// Fuzzy match helper — same logic as flyerService
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function similarity(a: string, b: string): number {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (na === nb) return 1;
+  if (na.includes(nb) || nb.includes(na)) return 0.85;
+  const wordsA = na.split(' ');
+  const wordsB = nb.split(' ');
+  const common = wordsA.filter(w => wordsB.includes(w));
+  return common.length / Math.max(wordsA.length, wordsB.length);
+}
+
+function findMatchingProduct(
+  item: ExtractedFlyerItem,
+  allProducts: { id: string; barcode: string; name: string; brand: string | null }[]
+): string | null {
+  // Try UPC match
+  if (item.upc) {
+    const match = allProducts.find(p => p.barcode === item.upc);
+    if (match) return match.id;
+  }
+
+  // Fuzzy name+brand match
+  let bestId: string | null = null;
+  let bestScore = 0;
+
+  for (const product of allProducts) {
+    let score = similarity(item.name, product.name);
+    if (item.brand && product.brand) {
+      const brandSim = similarity(item.brand, product.brand);
+      score = score * 0.7 + brandSim * 0.3;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = product.id;
+    }
+  }
+
+  return bestScore >= 0.4 ? bestId : null;
 }
 
 async function main() {
@@ -167,49 +203,136 @@ async function main() {
     }
   }
 
-  // Seed flyers (one active flyer per store — only for main/Toronto locations)
-  console.log('📰 Creating flyers...');
+  // ─── Seed flyers with real images + Gemini extraction ───
+  console.log('📰 Creating flyers with real images...');
   const now = new Date();
   const validFrom = new Date(now);
   validFrom.setDate(validFrom.getDate() - 2);
   const validTo = new Date(now);
   validTo.setDate(validTo.getDate() + 5);
 
-  // Only create flyers for the 5 main stores (not every location)
-  const mainStores = allStores.filter(s => !s.slug.includes('-') || s.slug === 'nofrills');
-  for (const store of mainStores) {
-    const totalPages = 3;
+  const flyerImagesDir = path.join(__dirname, '..', 'public', 'flyer-images');
+
+  // Cache Gemini results per chain (process each flyer image once)
+  // Uses a local cache file to avoid re-calling Gemini on every seed
+  const chainItems: Record<string, ExtractedFlyerItem[]> = {};
+  const cacheFile = path.join(flyerImagesDir, '.gemini-cache.json');
+  let cache: Record<string, ExtractedFlyerItem[]> = {};
+  try {
+    if (fs.existsSync(cacheFile)) {
+      cache = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+      console.log('  📦 Loaded Gemini extraction cache');
+    }
+  } catch { /* ignore */ }
+
+  for (const { chain, storeName } of CHAIN_FLYERS) {
+    // Check for real flyer image (try png, jpg, jpeg)
+    let imagePath: string | null = null;
+    let mimeType = 'image/png';
+    for (const ext of ['png', 'jpg', 'jpeg']) {
+      const candidate = path.join(flyerImagesDir, `${chain}-page-1.${ext}`);
+      if (fs.existsSync(candidate)) {
+        imagePath = candidate;
+        mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        break;
+      }
+    }
+
+    if (imagePath) {
+      // Check cache first
+      if (cache[chain] && cache[chain].length > 0) {
+        console.log(`  📦 Using cached extraction for ${storeName}: ${cache[chain].length} items`);
+        chainItems[chain] = cache[chain];
+      } else {
+        console.log(`  📸 Found real flyer image for ${storeName}: ${path.basename(imagePath)}`);
+        const imageBase64 = fs.readFileSync(imagePath).toString('base64');
+        const extracted = await extractFlyerItems(imageBase64, storeName, mimeType);
+        chainItems[chain] = extracted;
+        if (extracted.length > 0) {
+          cache[chain] = extracted;
+        }
+      }
+    } else {
+      console.log(`  ⚠️  No flyer image for ${storeName} — using mock items`);
+      chainItems[chain] = [];
+    }
+  }
+
+  // Save cache
+  if (Object.keys(cache).length > 0) {
+    fs.writeFileSync(cacheFile, JSON.stringify(cache, null, 2));
+    console.log('  💾 Saved Gemini extraction cache');
+  }
+
+  // Create flyers for ALL stores (each location gets the chain's flyer)
+  for (const store of allStores) {
+    // Determine which chain this store belongs to
+    const chain = CHAIN_FLYERS.find(c => store.slug === c.chain || store.slug.startsWith(c.chain + '-'));
+    if (!chain) continue;
+
+    const imageUrl = `/flyer-images/${chain.chain}-page-1.png`;
+    // Check if a jpg exists instead
+    const jpgPath = path.join(flyerImagesDir, `${chain.chain}-page-1.jpg`);
+    const jpegPath = path.join(flyerImagesDir, `${chain.chain}-page-1.jpeg`);
+    const actualImageUrl = fs.existsSync(jpgPath) ? `/flyer-images/${chain.chain}-page-1.jpg`
+      : fs.existsSync(jpegPath) ? `/flyer-images/${chain.chain}-page-1.jpeg`
+      : imageUrl;
 
     const flyer = await prisma.flyer.create({
       data: {
         storeId: store.id,
-        title: `${store.name} Weekly Flyer`,
+        title: `${chain.storeName} Weekly Flyer`,
         validFrom,
         validTo,
-        totalPages,
+        totalPages: 1,
       },
     });
 
-    const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
+    const page = await prisma.flyerPage.create({
+      data: {
+        flyerId: flyer.id,
+        pageNumber: 1,
+        imageUrl: actualImageUrl,
+      },
+    });
 
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      const page = await prisma.flyerPage.create({
-        data: {
-          flyerId: flyer.id,
-          pageNumber: pageNum,
-          imageUrl: flyerPageImageUrl(store.slug, pageNum),
-        },
-      });
+    const items = chainItems[chain.chain];
 
-      const layout = FLYER_LAYOUTS[(pageNum - 1) % FLYER_LAYOUTS.length];
-      const pageProducts = shuffledProducts.slice(
-        (pageNum - 1) * 5,
-        pageNum * 5
-      );
+    if (items.length > 0) {
+      // Use Gemini-extracted items
+      for (const item of items) {
+        const productId = findMatchingProduct(item, allProducts);
 
-      for (let i = 0; i < pageProducts.length && i < layout.length; i++) {
+        await prisma.flyerItem.create({
+          data: {
+            flyerPageId: page.id,
+            productId,
+            name: item.name,
+            brand: item.brand,
+            size: item.size,
+            price: item.price,
+            originalPrice: item.originalPrice,
+            saleStart: validFrom.toISOString().slice(0, 10),
+            saleEnd: validTo.toISOString().slice(0, 10),
+            plu: generatePlu(),
+            upc: item.upc,
+            itemCode: `ITM-${Math.floor(Math.random() * 100000)}`,
+            x: item.x,
+            y: item.y,
+            width: item.width,
+            height: item.height,
+          },
+        });
+      }
+      console.log(`   📰 ${store.name} (${store.slug}): ${items.length} Gemini-extracted items`);
+    } else {
+      // Fallback: use mock items from our product list
+      const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
+      const pageProducts = shuffledProducts.slice(0, FALLBACK_LAYOUTS.length);
+
+      for (let i = 0; i < pageProducts.length && i < FALLBACK_LAYOUTS.length; i++) {
         const product = pageProducts[i];
-        const pos = layout[i];
+        const pos = FALLBACK_LAYOUTS[i];
         const basePrice = basePrices[product.barcode] || 4.99;
         const isOnSale = Math.random() < 0.35;
         const itemPrice = isOnSale
@@ -237,15 +360,15 @@ async function main() {
           },
         });
       }
+      console.log(`   📰 ${store.name} (${store.slug}): ${pageProducts.length} mock items (no image)`);
     }
-
-    console.log(`   📰 ${store.name}: ${totalPages} pages with items`);
   }
 
   console.log('✅ Seeding complete!');
-  console.log(`   - ${stores.length} stores (${stores.length / 5} locations × 5 chains)`);
+  console.log(`   - ${stores.length} stores`);
   console.log(`   - ${products.length} products`);
   console.log(`   - ${allStores.length * products.length} prices`);
+  console.log(`   - ${allStores.length} store flyers`);
 }
 
 main()

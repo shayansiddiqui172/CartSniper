@@ -89,9 +89,9 @@ export async function matchProductToFlyer(
     return { found: false, match: null, fallback: { type: 'no_flyer', message: 'Store not found.' } };
   }
 
-  // 2. Find active flyer for the store
+  // 2. Find active flyer for the store (or chain fallback)
   const now = new Date();
-  const flyer = await prisma.flyer.findFirst({
+  let flyer = await prisma.flyer.findFirst({
     where: {
       storeId: store.id,
       validTo: { gte: now },
@@ -104,6 +104,27 @@ export async function matchProductToFlyer(
     },
     orderBy: { validFrom: 'desc' },
   });
+
+  // Chain fallback: if no flyer for this store, try the base chain store
+  if (!flyer && storeSlug.includes('-')) {
+    const baseSlug = storeSlug.replace(/-[^-]+$/, '');
+    const baseStore = await prisma.store.findUnique({ where: { slug: baseSlug } });
+    if (baseStore) {
+      flyer = await prisma.flyer.findFirst({
+        where: {
+          storeId: baseStore.id,
+          validTo: { gte: now },
+        },
+        include: {
+          pages: {
+            include: { items: true },
+            orderBy: { pageNumber: 'asc' },
+          },
+        },
+        orderBy: { validFrom: 'desc' },
+      });
+    }
+  }
 
   if (!flyer) {
     return {
