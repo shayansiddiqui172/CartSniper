@@ -34,9 +34,10 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prices    Price[]
-  cartItems CartItem[]
-  alerts    Alert[]
+  prices     Price[]
+  cartItems  CartItem[]
+  alerts     Alert[]
+  flyerItems FlyerItem[]
 }
 
 model Store {
@@ -50,6 +51,7 @@ model Store {
   priceMatchPolicy String? // Description of store's price match policy
 
   prices Price[]
+  flyers Flyer[]
 }
 
 model Price {
@@ -69,6 +71,65 @@ model Price {
   @@index([productId])
   @@index([storeId])
 }
+
+// ─── FLYER MODELS ───
+
+model Flyer {
+  id         String   @id @default(cuid())
+  storeId    String
+  title      String
+  validFrom  DateTime
+  validTo    DateTime
+  totalPages Int
+  createdAt  DateTime @default(now())
+
+  store Store       @relation(fields: [storeId], references: [id])
+  pages FlyerPage[]
+
+  @@index([storeId])
+}
+
+model FlyerPage {
+  id         String @id @default(cuid())
+  flyerId    String
+  pageNumber Int
+  imageUrl   String
+
+  flyer Flyer       @relation(fields: [flyerId], references: [id], onDelete: Cascade)
+  items FlyerItem[]
+
+  @@unique([flyerId, pageNumber])
+  @@index([flyerId])
+}
+
+model FlyerItem {
+  id          String  @id @default(cuid())
+  flyerPageId String
+  productId   String? // linked product (null if not matched)
+  name        String
+  brand       String?
+  size        String?
+  price       Float
+  originalPrice Float?
+  saleStart   String?
+  saleEnd     String?
+  plu         String?
+  upc         String?
+  itemCode    String?
+  // Bounding box coordinates (0-1 normalized)
+  x           Float
+  y           Float
+  width       Float
+  height      Float
+
+  flyerPage FlyerPage @relation(fields: [flyerPageId], references: [id], onDelete: Cascade)
+  product   Product?  @relation(fields: [productId], references: [id])
+
+  @@index([flyerPageId])
+  @@index([productId])
+}
+
+// ─── CART & ALERTS ───
 
 model Cart {
   id             String   @id @default(cuid())

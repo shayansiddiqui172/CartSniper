@@ -91,10 +91,55 @@ const basePrices: Record<string, number> = {
   '0066721006010': 2.99, // Chocolate milk
 };
 
+// Flyer page layouts: positions for items on each page (normalized 0-1 coords)
+// Each layout defines a grid of bounding boxes for flyer items
+const FLYER_LAYOUTS = [
+  // Layout A: 2x3 grid (6 items)
+  [
+    { x: 0.02, y: 0.02, width: 0.47, height: 0.30 },
+    { x: 0.51, y: 0.02, width: 0.47, height: 0.30 },
+    { x: 0.02, y: 0.34, width: 0.47, height: 0.30 },
+    { x: 0.51, y: 0.34, width: 0.47, height: 0.30 },
+    { x: 0.02, y: 0.66, width: 0.47, height: 0.30 },
+    { x: 0.51, y: 0.66, width: 0.47, height: 0.30 },
+  ],
+  // Layout B: 1 hero + 4 small
+  [
+    { x: 0.02, y: 0.02, width: 0.96, height: 0.40 },
+    { x: 0.02, y: 0.44, width: 0.47, height: 0.26 },
+    { x: 0.51, y: 0.44, width: 0.47, height: 0.26 },
+    { x: 0.02, y: 0.72, width: 0.47, height: 0.26 },
+    { x: 0.51, y: 0.72, width: 0.47, height: 0.26 },
+  ],
+  // Layout C: 3x2 grid (6 items)
+  [
+    { x: 0.02, y: 0.02, width: 0.30, height: 0.46 },
+    { x: 0.34, y: 0.02, width: 0.30, height: 0.46 },
+    { x: 0.66, y: 0.02, width: 0.30, height: 0.46 },
+    { x: 0.02, y: 0.50, width: 0.30, height: 0.46 },
+    { x: 0.34, y: 0.50, width: 0.30, height: 0.46 },
+    { x: 0.66, y: 0.50, width: 0.30, height: 0.46 },
+  ],
+];
+
+// Placeholder flyer page images (colored gradient SVGs encoded as data URIs won't work in seed,
+// so we use placeholder URLs that the frontend will handle)
+function flyerPageImageUrl(storeSlug: string, pageNum: number): string {
+  return `/flyer-images/${storeSlug}-page-${pageNum}.svg`;
+}
+
+// Generate PLU codes
+function generatePlu(): string {
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
 
   // Clear existing data
+  await prisma.flyerItem.deleteMany();
+  await prisma.flyerPage.deleteMany();
+  await prisma.flyer.deleteMany();
   await prisma.price.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.cart.deleteMany();
@@ -142,10 +187,85 @@ async function main() {
     }
   }
 
+  // Seed flyers (one active flyer per store)
+  console.log('📰 Creating flyers...');
+  const now = new Date();
+  const validFrom = new Date(now);
+  validFrom.setDate(validFrom.getDate() - 2); // started 2 days ago
+  const validTo = new Date(now);
+  validTo.setDate(validTo.getDate() + 5); // ends in 5 days
+
+  for (const store of allStores) {
+    const totalPages = 3;
+
+    const flyer = await prisma.flyer.create({
+      data: {
+        storeId: store.id,
+        title: `${store.name} Weekly Flyer`,
+        validFrom,
+        validTo,
+        totalPages,
+      },
+    });
+
+    // Distribute products across pages (5 products per page)
+    const shuffledProducts = [...allProducts].sort(() => Math.random() - 0.5);
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      const page = await prisma.flyerPage.create({
+        data: {
+          flyerId: flyer.id,
+          pageNumber: pageNum,
+          imageUrl: flyerPageImageUrl(store.slug, pageNum),
+        },
+      });
+
+      const layout = FLYER_LAYOUTS[(pageNum - 1) % FLYER_LAYOUTS.length];
+      const pageProducts = shuffledProducts.slice(
+        (pageNum - 1) * 5,
+        pageNum * 5
+      );
+
+      for (let i = 0; i < pageProducts.length && i < layout.length; i++) {
+        const product = pageProducts[i];
+        const pos = layout[i];
+        const basePrice = basePrices[product.barcode] || 4.99;
+        const isOnSale = Math.random() < 0.35;
+        const itemPrice = isOnSale
+          ? Math.round(basePrice * 0.82 * 100) / 100
+          : basePrice;
+
+        await prisma.flyerItem.create({
+          data: {
+            flyerPageId: page.id,
+            productId: product.id,
+            name: product.name,
+            brand: product.brand,
+            size: product.name.match(/\d+[gGmMlLkK]+/)?.[0] || null,
+            price: itemPrice,
+            originalPrice: isOnSale ? basePrice : null,
+            saleStart: validFrom.toISOString().slice(0, 10),
+            saleEnd: validTo.toISOString().slice(0, 10),
+            plu: generatePlu(),
+            upc: product.barcode,
+            itemCode: `ITM-${Math.floor(Math.random() * 100000)}`,
+            x: pos.x,
+            y: pos.y,
+            width: pos.width,
+            height: pos.height,
+          },
+        });
+      }
+    }
+
+    console.log(`   📰 ${store.name}: ${totalPages} pages with items`);
+  }
+
   console.log('✅ Seeding complete!');
   console.log(`   - ${stores.length} stores`);
   console.log(`   - ${products.length} products`);
   console.log(`   - ${stores.length * products.length} prices`);
+  console.log(`   - ${stores.length} flyers with ${stores.length * 3} pages`);
 }
 
 main()
