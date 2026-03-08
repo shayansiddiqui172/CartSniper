@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,20 @@ import PriceCard from '../../components/PriceCard';
 import ProductCard from '../../components/ProductCard';
 
 const API_URL = 'http://localhost:3000'; // Change to your backend URL
+
+// Ontario FSAs start with K, L, M, N, or P
+// Validated against the space-stripped form (always 6 chars)
+const ONTARIO_POSTAL_REGEX = /^[KLMNP][0-9][A-Z][0-9][A-Z][0-9]$/i;
+
+// Expects exactly 6 chars (no spaces)
+function formatPostalCode(stripped: string): string {
+  const clean = stripped.toUpperCase();
+  return `${clean.slice(0, 3)} ${clean.slice(3)}`;
+}
+
+function isValidOntarioPostal(code: string): boolean {
+  return ONTARIO_POSTAL_REGEX.test(code);
+}
 
 interface Price {
   id: string;
@@ -49,6 +63,69 @@ export default function ScanScreen() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualBarcode, setManualBarcode] = useState('');
+
+  // Postal code state
+  const [postalInput, setPostalInput] = useState('');
+  const [postalCode, setPostalCode] = useState<string | null>(null);
+  const [postalArea, setPostalArea] = useState<string | null>(null);
+  const [postalError, setPostalError] = useState<string | null>(null);
+  const [postalLoading, setPostalLoading] = useState(false);
+  const postalDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePostalChange = (text: string) => {
+    // Strip everything except letters and digits, cap at 6 alphanum chars
+    const alphanum = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
+
+    // Auto-format: insert space after 3rd char once we have 4+
+    const formatted = alphanum.length > 3
+      ? `${alphanum.slice(0, 3)} ${alphanum.slice(3)}`
+      : alphanum;
+
+    setPostalInput(formatted);
+    setPostalError(null);
+    setPostalArea(null);
+    setPostalCode(null);
+
+    if (postalDebounce.current) clearTimeout(postalDebounce.current);
+
+    if (alphanum.length === 0) return;
+
+    // Immediate first-character check
+    if (!/^[KLMNP]/i.test(alphanum)) {
+      setPostalError('Ontario postal codes start with K, L, M, N, or P');
+      return;
+    }
+
+    if (alphanum.length < 6) return;
+
+    // Full validation once we have all 6 chars
+    postalDebounce.current = setTimeout(async () => {
+      if (!isValidOntarioPostal(alphanum)) {
+        setPostalError('Must be a valid Ontario postal code (e.g. M5V 3A1)');
+        return;
+      }
+
+      const display = formatPostalCode(alphanum);
+      setPostalInput(display);
+      setPostalCode(display);
+      setPostalLoading(true);
+
+      try {
+        const res = await fetch(`https://geocoder.ca/?postal=${alphanum}&json=1`);
+        if (!res.ok) throw new Error('lookup failed');
+        const data = await res.json();
+        if (data?.standard?.city) {
+          setPostalArea(`${data.standard.city}, ${data.standard.prov ?? 'ON'}`);
+        } else {
+          setPostalArea(null);
+        }
+      } catch {
+        setPostalArea(null);
+      } finally {
+        setPostalLoading(false);
+      }
+    }, 400);
+  };
 
   const handleBarcodeScan = async ({ data }: { data: string }) => {
     if (loading) return;
@@ -110,6 +187,37 @@ export default function ScanScreen() {
     <ScrollView style={styles.container}>
       {scanning ? (
         <View>
+          {/* Postal Code Section */}
+          <View style={styles.postalSection}>
+            <Text style={styles.postalLabel}>Your Ontario Postal Code</Text>
+            <View style={styles.postalRow}>
+              <TextInput
+                style={[
+                  styles.postalInput,
+                  postalError ? styles.postalInputError : null,
+                  postalCode ? styles.postalInputValid : null,
+                ]}
+                placeholder="e.g. M5V 3A1"
+                placeholderTextColor="#9CA3AF"
+                value={postalInput}
+                onChangeText={handlePostalChange}
+                autoCapitalize="characters"
+                maxLength={7}
+              />
+              {postalLoading && <ActivityIndicator style={styles.postalSpinner} color="#10B981" />}
+              {postalCode && !postalLoading && (
+                <Ionicons name="checkmark-circle" size={22} color="#10B981" style={styles.postalSpinner} />
+              )}
+            </View>
+            {postalError ? (
+              <Text style={styles.postalErrorText}>{postalError}</Text>
+            ) : postalArea ? (
+              <Text style={styles.postalAreaText}>
+                <Ionicons name="location-outline" size={13} /> {postalArea}
+              </Text>
+            ) : null}
+          </View>
+
           <View style={styles.cameraContainer}>
             <CameraView
               style={styles.camera}
@@ -174,6 +282,15 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
+  postalSection: { backgroundColor: '#FFF', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  postalLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8 },
+  postalRow: { flexDirection: 'row', alignItems: 'center' },
+  postalInput: { flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, letterSpacing: 1, color: '#111827' },
+  postalInputError: { borderColor: '#EF4444' },
+  postalInputValid: { borderColor: '#10B981' },
+  postalSpinner: { marginLeft: 10 },
+  postalErrorText: { fontSize: 12, color: '#EF4444', marginTop: 6 },
+  postalAreaText: { fontSize: 12, color: '#10B981', marginTop: 6 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, minHeight: 400 },
   cameraContainer: { height: 300, position: 'relative' },
   camera: { flex: 1 },

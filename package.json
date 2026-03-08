@@ -1,0 +1,23 @@
+{
+  "name": "cartsniper",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "cartsniper-backend",
+    "cartsniper-mobile"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=cartsniper-backend",
+    "backend:dev": "npm run dev --workspace=cartsniper-backend",
+    "backend:build": "npm run build --workspace=cartsniper-backend",
+    "backend:start": "npm run start --workspace=cartsniper-backend",
+    "backend:db:generate": "npm run db:generate --workspace=cartsniper-backend",
+    "backend:db:migrate": "npm run db:migrate --workspace=cartsniper-backend",
+    "backend:db:seed": "npm run db:seed --workspace=cartsniper-backend",
+    "backend:db:studio": "npm run db:studio --workspace=cartsniper-backend",
+    "mobile:start": "npm run start --workspace=cartsniper-mobile",
+    "mobile:android": "npm run android --workspace=cartsniper-mobile",
+    "mobile:ios": "npm run ios --workspace=cartsniper-mobile",
+    "mobile:web": "npm run web --workspace=cartsniper-mobile"
+  }
+}
