@@ -576,6 +576,18 @@
             </div>
           </div>
           <div id="scanner-status" style="text-align:center;padding:12px;color:#6b7280;font-size:13px;"></div>
+          <!-- Manual barcode entry fallback (shown in barcode mode) -->
+          <div id="manual-barcode-entry" style="display:none;border-top:1px solid #e5e7eb;margin-top:12px;padding-top:14px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <div style="flex:1;height:1px;background:#e5e7eb;"></div>
+              <span style="font-size:12px;color:#9ca3af;">or type the barcode number</span>
+              <div style="flex:1;height:1px;background:#e5e7eb;"></div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <input id="manual-barcode-input" type="text" inputmode="numeric" placeholder="e.g. 0681131079860" style="flex:1;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:15px;letter-spacing:0.5px;outline:none;transition:border-color 0.15s;" onfocus="this.style.borderColor='#1a7a3c'" onblur="this.style.borderColor='#e5e7eb'" onkeydown="if(event.key==='Enter') submitManualBarcode()" />
+              <button onclick="submitManualBarcode()" style="padding:10px 16px;background:#1a7a3c;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">Look Up</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -949,6 +961,8 @@
       document.getElementById('scanner-title').textContent = 'Scan Barcode';
       document.getElementById('barcode-reader').style.display = 'block';
       document.getElementById('photo-capture').style.display = 'none';
+      document.getElementById('manual-barcode-entry').style.display = 'block';
+      document.getElementById('manual-barcode-input').value = '';
       document.getElementById('scanner-status').textContent = 'Point your camera at a barcode...';
       document.getElementById('scanner-modal').style.display = 'flex';
 
@@ -997,12 +1011,20 @@
       }
     }
 
+    async function submitManualBarcode() {
+      const code = document.getElementById('manual-barcode-input').value.trim();
+      if (!code) return;
+      // Reuse the same scan flow
+      await onBarcodeScanned(code);
+    }
+
     // ─── PHOTO CAPTURE ───
     function openPhotoCapture() {
       if (!locationSet) { document.getElementById('postal-input').focus(); document.getElementById('search-area').scrollIntoView({behavior:'smooth'}); return; }
       document.getElementById('scanner-title').textContent = 'Take a Photo';
       document.getElementById('barcode-reader').style.display = 'none';
       document.getElementById('photo-capture').style.display = 'block';
+      document.getElementById('manual-barcode-entry').style.display = 'none';
       document.getElementById('photo-preview').style.display = 'none';
       document.getElementById('capture-btn').style.display = 'block';
       document.getElementById('scanner-status').textContent = 'Point your camera at the product and tap Capture.';
