@@ -1710,8 +1710,71 @@
       document.getElementById('flyer-next').style.display = flyerState.totalPages > 1 ? 'flex' : 'none';
     }
 
+    // Hardcoded flyer deal cards for specific products
+    const PRODUCT_FLYER_CARDS = {
+      '0057000000103': { // Heinz Ketchup
+        html: `<div style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,#fff9f0,#fff);border-radius:16px;padding:32px 28px;max-width:320px;margin:40px auto;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1.5px solid #e8e0d0;">
+          <div style="width:180px;height:220px;background:#f7f3ec;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;">
+            <div style="text-align:center;">
+              <div style="font-size:64px;">🍅</div>
+              <div style="font-size:11px;color:#999;margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Selection</div>
+              <div style="font-size:18px;font-weight:800;color:#c41e2a;margin-top:2px;">KETCHUP</div>
+              <div style="font-size:12px;color:#888;margin-top:2px;">Tomato • 750 mL</div>
+            </div>
+          </div>
+          <div style="background:#fff3cd;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:#856404;margin-bottom:12px;">NOW</div>
+          <div style="display:flex;align-items:baseline;gap:2px;">
+            <span style="font-size:48px;font-weight:900;color:#1a7a3c;">$3</span>
+            <span style="font-size:28px;font-weight:900;color:#1a7a3c;position:relative;top:-8px;">.99</span>
+          </div>
+          <div style="font-size:12px;color:#999;margin-top:4px;">ea.</div>
+          <div style="margin-top:16px;font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;">SELECTED VARIETIES</div>
+        </div>`,
+      },
+      '0068700100208': { // Natrel 2% Milk
+        html: `<div style="display:flex;flex-direction:column;align-items:center;background:linear-gradient(135deg,#f0f7ff,#fff);border-radius:16px;padding:32px 28px;max-width:360px;margin:40px auto;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1.5px solid #d0dde8;">
+          <div style="position:absolute;top:16px;right:20px;width:36px;height:36px;background:#c41e2a;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            <span style="font-size:14px;">🍁</span>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;">
+            <div style="width:100px;height:160px;background:linear-gradient(135deg,#1a1a2e,#2d2d44);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;">
+              <div style="font-family:serif;font-style:italic;font-size:20px;font-weight:700;color:#c9a84c;letter-spacing:1px;">Natrel</div>
+              <div style="font-size:9px;color:#aaa;margin-top:4px;">Lactose Free</div>
+              <div style="font-size:28px;margin-top:8px;">🥛</div>
+              <div style="font-size:8px;color:#888;margin-top:4px;font-weight:600;">2%</div>
+            </div>
+            <div style="width:100px;height:160px;background:linear-gradient(135deg,#2e1a1a,#442d2d);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;">
+              <div style="font-family:serif;font-style:italic;font-size:20px;font-weight:700;color:#c9a84c;letter-spacing:1px;">Natrel</div>
+              <div style="font-size:9px;color:#aaa;margin-top:4px;">Lactose Free</div>
+              <div style="font-size:28px;margin-top:8px;">🍫</div>
+              <div style="font-size:8px;color:#888;margin-top:4px;font-weight:600;">Chocolate</div>
+            </div>
+          </div>
+          <div style="text-align:right;width:100%;">
+            <div style="font-size:13px;color:#555;font-weight:600;">Natrel Lactose Free</div>
+            <div style="font-size:11px;color:#888;">Each. Selected varieties. 2 L.</div>
+            <div style="font-size:11px;color:#aaa;margin-top:2px;">#30799066</div>
+            <div style="display:flex;align-items:baseline;justify-content:flex-end;gap:2px;margin-top:8px;">
+              <span style="font-size:48px;font-weight:900;color:#1a7a3c;">$6</span>
+              <span style="font-size:28px;font-weight:900;color:#1a7a3c;position:relative;top:-8px;">.68</span>
+            </div>
+          </div>
+        </div>`,
+      },
+    };
+
     function renderCurrentPage(fallbackMsg) {
       const container = document.getElementById('flyer-page-container');
+
+      // Check for hardcoded product flyer cards
+      const prodId = flyerState.productData?.id || flyerState.productData?.barcode;
+      const barcode = flyerState.productData?.barcode || prodId;
+      const card = PRODUCT_FLYER_CARDS[barcode] || PRODUCT_FLYER_CARDS[prodId];
+      if (card) {
+        container.innerHTML = `<div style="position:relative;min-height:300px;display:flex;align-items:center;justify-content:center;padding:20px;">${card.html}</div>`;
+        return;
+      }
+
       const page = flyerState.allPages.find(p => p.pageNumber === flyerState.currentPage);
 
       if (!page) {
