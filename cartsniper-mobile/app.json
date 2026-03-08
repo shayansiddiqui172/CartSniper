@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "CartSniper",
+    "slug": "cartsniper",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#10B981"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cartsniper.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CartSniper needs camera access to scan product barcodes"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#10B981"
+      },
+      "package": "com.cartsniper.app",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CartSniper to access your camera to scan barcodes"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#10B981"
+        }
+      ]
+    ],
+    "scheme": "cartsniper",
+    "extra": {
+      "apiUrl": "http://localhost:3000"
+    }
+  }
+}
