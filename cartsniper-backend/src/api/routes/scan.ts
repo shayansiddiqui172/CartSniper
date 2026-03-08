@@ -210,4 +210,74 @@ router.post('/image', async (req, res) => {
   }
 });
 
+// ─── PRODUCT SEARCH (autofill) ───
+router.get('/search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim().toLowerCase();
+    if (q.length < 2) return res.json({ results: [] });
+
+    // Search FlyerItem table
+    const flyerItems = await prisma.flyerItem.findMany({
+      where: {
+        OR: [
+          { name: { contains: q } },
+          { brand: { contains: q } },
+        ],
+      },
+      include: {
+        flyerPage: {
+          include: {
+            flyer: {
+              include: { store: true },
+            },
+          },
+        },
+      },
+      take: 20,
+    });
+
+    // Search Product table
+    const products = await prisma.product.findMany({
+      where: {
+        OR: [
+          { name: { contains: q } },
+          { brand: { contains: q } },
+        ],
+      },
+      take: 10,
+    });
+
+    const results = [
+      ...flyerItems.map((fi) => ({
+        id: fi.id,
+        name: fi.name,
+        brand: fi.brand,
+        size: fi.size,
+        price: fi.price,
+        originalPrice: fi.originalPrice,
+        store: fi.flyerPage?.flyer?.store?.name || null,
+        storeSlug: fi.flyerPage?.flyer?.store?.slug || null,
+        source: 'flyer' as const,
+      })),
+      ...products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        size: null,
+        price: null,
+        originalPrice: null,
+        store: null,
+        storeSlug: null,
+        source: 'product' as const,
+        barcode: p.barcode,
+      })),
+    ];
+
+    return res.json({ results });
+  } catch (error) {
+    console.error('Search error:', error);
+    return res.status(500).json({ error: 'Search failed' });
+  }
+});
+
 export default router;

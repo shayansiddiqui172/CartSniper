@@ -263,9 +263,9 @@
     .flyer-close-btn:hover { background: rgba(255,255,255,0.3); }
     .flyer-viewer {
       position: relative;
-      width: 100%;
-      max-width: 820px;
-      max-height: calc(100vh - 140px);
+      width: 95vw;
+      max-width: 1400px;
+      max-height: calc(100vh - 100px);
       border-radius: 12px;
       overflow: hidden;
       background: #fff;
@@ -275,10 +275,14 @@
       position: relative;
       width: 100%;
       overflow: auto;
+      max-height: calc(100vh - 160px);
+      -webkit-overflow-scrolling: touch;
     }
     .flyer-page-container img {
-      width: 100%;
       display: block;
+      max-height: calc(100vh - 180px);
+      width: auto;
+      max-width: none;
     }
     .flyer-highlight {
       position: absolute;
@@ -507,19 +511,24 @@
     </div>
 
     <!-- Product search (shown after location) -->
-    <div id="product-search" class="max-w-lg mx-auto mt-4" style="display:none;">
+    <div id="product-search" class="max-w-lg mx-auto mt-4" style="display:none;position:relative;">
       <div class="flex gap-3">
         <input
           id="product-input"
           type="text"
           class="search-input"
           placeholder='Search a product (e.g. "milk", "chicken breast")'
-          onkeydown="if(event.key==='Enter') searchProduct()"
+          oninput="handleProductAutofill(this.value)"
+          onkeydown="handleProductKeydown(event)"
+          onblur="setTimeout(()=>closeProductSuggestions(),200)"
+          onfocus="handleProductAutofill(this.value)"
+          autocomplete="off"
         />
         <button class="btn-primary" onclick="searchProduct()">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </button>
       </div>
+      <div id="product-suggestions" style="display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border:1.5px solid #1a7a3c;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:200;max-height:320px;overflow-y:auto;margin-top:6px;"></div>
     </div>
 
     <!-- Scan section — always visible below location -->
@@ -1269,6 +1278,172 @@
       capturedImageBase64 = null;
     }
 
+    // ─── PRODUCT AUTOFILL ───
+    let productSuggestionIndex = -1;
+    let autofillDebounce = null;
+    let cachedBackendResults = [];
+
+    // Category emoji map
+    const CATEGORY_EMOJI = {
+      dairy: '🥛', beverages: '🥤', snacks: '🍿', produce: '🥬', meat: '🥩',
+      bakery: '🍞', frozen: '❄️', pantry: '🥫', condiments: '🫙', cereal: '🥣',
+      eggs: '🥚', soup: '🍲', pasta: '🍝', 'personal care': '🧴', other: '📦',
+    };
+
+    function getCategoryEmoji(cat) {
+      if (!cat) return '🛒';
+      return CATEGORY_EMOJI[cat.toLowerCase()] || '🛒';
+    }
+
+    function handleProductAutofill(value) {
+      const q = value.trim().toLowerCase();
+      if (q.length < 2) { closeProductSuggestions(); return; }
+
+      // Immediate client-side results from DEMO_PRODUCTS
+      const clientResults = Object.entries(DEMO_PRODUCTS)
+        .filter(([key, p]) =>
+          key.includes(q) ||
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q)
+        )
+        .map(([key, p]) => ({
+          id: p.barcode,
+          name: p.name,
+          brand: p.brand,
+          price: BASE_PRICES[p.barcode] || null,
+          store: null,
+          source: 'product',
+          barcode: p.barcode,
+          category: key,
+        }));
+
+      // Deduplicate by barcode
+      const seen = new Set();
+      const unique = clientResults.filter(r => {
+        if (seen.has(r.id)) return false;
+        seen.add(r.id);
+        return true;
+      });
+
+      showProductSuggestions(unique, q);
+
+      // Debounced backend search
+      clearTimeout(autofillDebounce);
+      autofillDebounce = setTimeout(async () => {
+        try {
+          const res = await fetch(`${API_URL}/scan/search?q=${encodeURIComponent(q)}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+              cachedBackendResults = data.results;
+              // Merge backend results with client results
+              const merged = [...unique];
+              const mergedIds = new Set(unique.map(r => r.id));
+              data.results.forEach(r => {
+                if (!mergedIds.has(r.id)) {
+                  merged.push(r);
+                  mergedIds.add(r.id);
+                }
+              });
+              // Only update if input hasn't changed
+              const currentQ = document.getElementById('product-input').value.trim().toLowerCase();
+              if (currentQ === q) showProductSuggestions(merged, q);
+            }
+          }
+        } catch { /* backend unavailable — client results already shown */ }
+      }, 300);
+    }
+
+    function showProductSuggestions(results, query) {
+      if (results.length === 0) { closeProductSuggestions(); return; }
+      const box = document.getElementById('product-suggestions');
+      productSuggestionIndex = -1;
+      box.innerHTML = results.slice(0, 8).map((r, i) => {
+        const emoji = getCategoryEmoji(r.category);
+        const priceHtml = r.price ? `<span style="font-weight:700;color:#1a7a3c;">$${r.price.toFixed(2)}</span>` : '';
+        const storeHtml = r.store ? `<span style="font-size:12px;color:#9ca3af;margin-left:6px;">${r.store}</span>` : '';
+        const saleHtml = r.originalPrice ? `<span style="font-size:11px;color:#dc2626;text-decoration:line-through;margin-right:4px;">$${r.originalPrice.toFixed(2)}</span>` : '';
+        const sourceTag = r.source === 'flyer'
+          ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:600;">FLYER</span>`
+          : '';
+        // Highlight the matching part in the name
+        const name = r.name.replace(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<b>$1</b>');
+        return `<div class="product-suggestion" data-index="${i}"
+          onmousedown="selectProductSuggestion(${i})"
+          onmouseenter="highlightProductSuggestion(${i})"
+          style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f3f4f6;transition:background 0.1s;">
+          <span style="font-size:20px;flex-shrink:0;">${emoji}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+            <div style="font-size:12px;color:#6b7280;">${r.brand || ''} ${r.size || ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+            ${sourceTag}
+            ${saleHtml}
+            ${priceHtml}
+            ${storeHtml}
+          </div>
+        </div>`;
+      }).join('');
+      box.style.display = 'block';
+    }
+
+    function selectProductSuggestion(index) {
+      const box = document.getElementById('product-suggestions');
+      const items = box.querySelectorAll('.product-suggestion');
+      if (index < 0 || index >= items.length) return;
+      // Get the suggestion text (strip highlights)
+      const nameEl = items[index].querySelector('div > div');
+      const name = nameEl ? nameEl.textContent : '';
+      document.getElementById('product-input').value = name;
+      closeProductSuggestions();
+      searchProduct();
+    }
+
+    function highlightProductSuggestion(index) {
+      productSuggestionIndex = index;
+      const box = document.getElementById('product-suggestions');
+      box.querySelectorAll('.product-suggestion').forEach((el, i) => {
+        el.style.background = i === index ? '#f0fdf4' : '';
+      });
+    }
+
+    function closeProductSuggestions() {
+      document.getElementById('product-suggestions').style.display = 'none';
+      productSuggestionIndex = -1;
+    }
+
+    function handleProductKeydown(e) {
+      const box = document.getElementById('product-suggestions');
+      const items = box.querySelectorAll('.product-suggestion');
+      if (box.style.display === 'none' || items.length === 0) {
+        if (e.key === 'Enter') searchProduct();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        productSuggestionIndex = Math.min(productSuggestionIndex + 1, items.length - 1);
+        items.forEach((el, i) => el.style.background = i === productSuggestionIndex ? '#f0fdf4' : '');
+        items[productSuggestionIndex]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        productSuggestionIndex = Math.max(productSuggestionIndex - 1, -1);
+        items.forEach((el, i) => el.style.background = i === productSuggestionIndex ? '#f0fdf4' : '');
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (productSuggestionIndex >= 0) {
+          selectProductSuggestion(productSuggestionIndex);
+        } else {
+          closeProductSuggestions();
+          searchProduct();
+        }
+      } else if (e.key === 'Escape') {
+        closeProductSuggestions();
+      }
+    }
+
     async function searchProduct() {
       if (!locationSet) { alert('Please set your location first'); return; }
 
@@ -1358,25 +1533,35 @@
       };
     });
 
+    // Map store slug to chain name for flyer images
+    function getChainSlug(slug) {
+      const chains = ['walmart', 'loblaws', 'nofrills', 'metro', 'freshco'];
+      for (const chain of chains) {
+        if (slug === chain || slug.startsWith(chain + '-')) return chain;
+      }
+      return slug;
+    }
+
     function generateDemoFlyerMatch(product, store, price) {
       const itemInfo = DEMO_FLYER_ITEMS[product.id] || DEMO_FLYER_ITEMS[product.barcode] || {};
       const salePrice = price.salePrice || price.effective || price.price;
       const originalPrice = price.salePrice ? price.price : null;
-      const pageNum = 1 + Math.floor(Math.random() * 3);
-      // Sensible bounding box
+      const chainSlug = getChainSlug(store.slug);
+      // Sensible bounding box for panoramic image
       const positions = [
-        { x: 0.05, y: 0.15, width: 0.42, height: 0.28 },
-        { x: 0.52, y: 0.15, width: 0.42, height: 0.28 },
-        { x: 0.05, y: 0.45, width: 0.42, height: 0.28 },
-        { x: 0.52, y: 0.45, width: 0.42, height: 0.28 },
-        { x: 0.05, y: 0.70, width: 0.42, height: 0.25 },
-        { x: 0.52, y: 0.70, width: 0.42, height: 0.25 },
+        { x: 0.02, y: 0.10, width: 0.15, height: 0.25 },
+        { x: 0.18, y: 0.10, width: 0.15, height: 0.25 },
+        { x: 0.02, y: 0.40, width: 0.15, height: 0.25 },
+        { x: 0.18, y: 0.40, width: 0.15, height: 0.25 },
+        { x: 0.02, y: 0.70, width: 0.15, height: 0.25 },
+        { x: 0.18, y: 0.70, width: 0.15, height: 0.25 },
       ];
       const pos = positions[Math.floor(Math.random() * positions.length)];
 
       const now = new Date();
       const saleStart = new Date(now); saleStart.setDate(saleStart.getDate() - 2);
       const saleEnd = new Date(now); saleEnd.setDate(saleEnd.getDate() + 5);
+      const imageUrl = '/flyer-images/' + chainSlug + '-page-1.png';
 
       return {
         found: true,
@@ -1386,9 +1571,9 @@
           storeName: store.name,
           flyerId: 'demo-flyer-' + store.slug,
           flyerTitle: store.name + ' Weekly Flyer',
-          flyerPage: pageNum,
+          flyerPage: 1,
           flyerItemId: 'demo-item-' + Math.random().toString(36).slice(2),
-          flyerImageUrl: '/flyer-images/' + store.slug + '-page-' + pageNum + '.svg',
+          flyerImageUrl: imageUrl,
           matchConfidence: 'high',
           matchSource: 'demo_data',
           focusTarget: { type: 'bounding_box', ...pos },
@@ -1404,11 +1589,9 @@
             itemCode: itemInfo.itemCode || null,
             upc: itemInfo.upc || product.barcode || null,
           },
-          totalPages: 3,
+          totalPages: 1,
           allPages: [
-            { pageNumber: 1, imageUrl: '/flyer-images/' + store.slug + '-page-1.svg' },
-            { pageNumber: 2, imageUrl: '/flyer-images/' + store.slug + '-page-2.svg' },
-            { pageNumber: 3, imageUrl: '/flyer-images/' + store.slug + '-page-3.svg' },
+            { pageNumber: 1, imageUrl: imageUrl },
           ],
         },
       };
@@ -1506,7 +1689,7 @@
         return;
       }
 
-      let html = `<div style="position:relative;"><img src="${page.imageUrl}" alt="Flyer page ${page.pageNumber}" style="width:100%;display:block;min-height:500px;background:#fafaf5;" />`;
+      let html = `<div style="position:relative;display:inline-block;"><img src="${page.imageUrl}" alt="Flyer page ${page.pageNumber}" style="display:block;max-height:calc(100vh - 180px);width:auto;max-width:none;background:#fafaf5;" />`;
 
       // Draw highlight if this is the matched page
       const m = flyerState.matchData;
@@ -1532,11 +1715,13 @@
 
       container.innerHTML = html;
 
-      // Scroll highlight into view
+      // Scroll highlight into view (both horizontal and vertical for panoramic images)
       setTimeout(() => {
         const hl = document.getElementById('flyer-highlight');
-        if (hl) hl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+        if (hl) {
+          hl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }
+      }, 300);
     }
 
     function navigateFlyerPage(dir) {
