@@ -262,6 +262,8 @@
           type="text"
           class="search-input"
           placeholder="Enter postal code (e.g. N2G 1A1)"
+          maxlength="7"
+          autocomplete="postal-code"
           onkeydown="if(event.key==='Enter') setLocation()"
         />
         <button class="btn-primary" onclick="setLocation()">Set Location</button>
@@ -445,9 +447,25 @@
       document.getElementById('postal-input').focus();
     }
 
+    // Ontario FSAs start with K, L, M, N, or P
+    const ONTARIO_POSTAL_RE = /^([KLMNP][0-9][A-Z])\s?([0-9][A-Z][0-9])$/i;
+
     function setLocation() {
-      const val = document.getElementById('postal-input').value.trim().toUpperCase();
-      if (!val) return alert('Please enter a postal code');
+      const raw = document.getElementById('postal-input').value.trim().toUpperCase();
+      if (!raw) {
+        showPostalError('Please enter a postal code.');
+        return;
+      }
+
+      const m = raw.match(ONTARIO_POSTAL_RE);
+      if (!m) {
+        showPostalError('Enter a valid Ontario postal code (e.g. M5V 3A1).');
+        return;
+      }
+
+      const val = `${m[1]} ${m[2]}`;
+      document.getElementById('postal-input').value = val;
+      hidePostalError();
 
       currentPostal = val;
       locationSet = true;
@@ -457,6 +475,23 @@
       document.getElementById('location-display').textContent = val;
       document.getElementById('product-search').style.display = 'block';
       document.getElementById('product-input').focus();
+    }
+
+    function showPostalError(msg) {
+      let el = document.getElementById('postal-error');
+      if (!el) {
+        el = document.createElement('p');
+        el.id = 'postal-error';
+        el.style.cssText = 'color:#dc2626;font-size:13px;margin-top:6px;';
+        document.getElementById('location-hint').parentNode.insertBefore(el, document.getElementById('location-hint'));
+      }
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function hidePostalError() {
+      const el = document.getElementById('postal-error');
+      if (el) el.style.display = 'none';
     }
 
     async function searchProduct() {
