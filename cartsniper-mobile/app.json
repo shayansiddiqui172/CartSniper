@@ -9,7 +9,9 @@
     "splash": {
       "backgroundColor": "#10B981"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.cartsniper.app",
@@ -22,7 +24,9 @@
         "backgroundColor": "#10B981"
       },
       "package": "com.cartsniper.app",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "plugins": [
       [
@@ -37,7 +41,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#10B981"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "scheme": "cartsniper",
     "extra": {
