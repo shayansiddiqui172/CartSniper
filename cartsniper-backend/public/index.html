@@ -523,20 +523,30 @@
     </div>
 
     <!-- Scan section — always visible below location -->
-    <div class="max-w-lg mx-auto mt-4">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    <div class="max-w-lg mx-auto mt-6">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
         <div style="flex:1;height:1px;background:#d1d5db;"></div>
-        <span style="color:#9ca3af;font-size:13px;font-weight:500;">or scan instead</span>
+        <span style="color:#6b7280;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">or scan instantly</span>
         <div style="flex:1;height:1px;background:#d1d5db;"></div>
       </div>
-      <div class="flex gap-3">
-        <button onclick="openBarcodeScanner()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:2px dashed #d1d5db;border-radius:10px;background:#fff;font-size:14px;font-weight:600;color:#374151;cursor:pointer;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a7a3c';this.style.color='#1a7a3c'" onmouseout="this.style.borderColor='#d1d5db';this.style.color='#374151'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
-          Scan Barcode
+      <div class="flex gap-4">
+        <button onclick="openBarcodeScanner()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px 16px;border:1.5px solid #e5e7eb;border-radius:14px;background:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.06);" onmouseover="this.style.borderColor='#1a7a3c';this.style.boxShadow='0 4px 16px rgba(26,122,60,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)';this.style.transform='translateY(0)'">
+          <div style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#1a7a3c" stroke-width="2"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:2px;">Scan Barcode</div>
+            <div style="font-size:12px;color:#9ca3af;">Point at any product</div>
+          </div>
         </button>
-        <button onclick="openPhotoCapture()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 16px;border:2px dashed #d1d5db;border-radius:10px;background:#fff;font-size:14px;font-weight:600;color:#374151;cursor:pointer;transition:border-color 0.15s,color 0.15s;" onmouseover="this.style.borderColor='#1a7a3c';this.style.color='#1a7a3c'" onmouseout="this.style.borderColor='#d1d5db';this.style.color='#374151'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          Take Photo
+        <button onclick="openPhotoCapture()" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px 16px;border:1.5px solid #e5e7eb;border-radius:14px;background:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.06);" onmouseover="this.style.borderColor='#1a7a3c';this.style.boxShadow='0 4px 16px rgba(26,122,60,0.12)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e5e7eb';this.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)';this.style.transform='translateY(0)'">
+          <div style="width:48px;height:48px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#1a7a3c" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:2px;">Take Photo</div>
+            <div style="font-size:12px;color:#9ca3af;">AI identifies the item</div>
+          </div>
         </button>
       </div>
     </div>
