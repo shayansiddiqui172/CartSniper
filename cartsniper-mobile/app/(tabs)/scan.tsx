@@ -29,12 +29,19 @@ function isValidOntarioPostal(code: string): boolean {
   return ONTARIO_POSTAL_REGEX.test(code);
 }
 
+interface GeoResult {
+  city: string;
+  lat: number;
+  lng: number;
+}
+
 interface Price {
   id: string;
   effectivePrice: number;
   price: number;
   salePrice: number | null;
   inStock: boolean;
+  distance?: number | null;
   store: {
     name: string;
     slug: string;
@@ -71,16 +78,21 @@ export default function ScanScreen() {
   const [lockedLocation, setLockedLocation] = useState<string | null>(null); // "Location secured" after full code
   const [postalError, setPostalError] = useState<string | null>(null);
   const [postalLoading, setPostalLoading] = useState(false);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const postalDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFsaRef = useRef<string | null>(null);
 
-  const geocodePostal = async (alphanum: string): Promise<string | null> => {
+  const geocodePostal = async (alphanum: string): Promise<GeoResult | null> => {
     try {
       const res = await fetch(`https://geocoder.ca/?postal=${alphanum}&json=1`);
       if (!res.ok) return null;
       const data = await res.json();
-      if (data?.standard?.city) {
-        return `${data.standard.city}, ${data.standard.prov ?? 'ON'}`;
+      if (data?.standard?.city && data.latt && data.longt) {
+        return {
+          city: `${data.standard.city}, ${data.standard.prov ?? 'ON'}`,
+          lat: parseFloat(data.latt),
+          lng: parseFloat(data.longt),
+        };
       }
     } catch {}
     return null;
@@ -99,6 +111,7 @@ export default function ScanScreen() {
     setPostalError(null);
     setLockedLocation(null);
     setPostalCode(null);
+    setCoords(null);
 
     if (postalDebounce.current) clearTimeout(postalDebounce.current);
 
@@ -122,8 +135,9 @@ export default function ScanScreen() {
     if (alphanum.length >= 3 && fsa !== lastFsaRef.current) {
       lastFsaRef.current = fsa;
       setPostalLoading(true);
-      geocodePostal(fsa).then((area) => {
-        setPostalArea(area);
+      geocodePostal(fsa).then((result) => {
+        setPostalArea(result?.city ?? null);
+        if (result) setCoords({ lat: result.lat, lng: result.lng });
         setPostalLoading(false);
       });
     }
@@ -144,11 +158,16 @@ export default function ScanScreen() {
       // Reuse FSA area if already fetched, else fetch full postal
       if (postalArea) {
         setLockedLocation(postalArea);
+        // Refine coords to the exact 6-digit postal if FSA coords already stored
+        geocodePostal(alphanum).then((result) => {
+          if (result) setCoords({ lat: result.lat, lng: result.lng });
+        });
       } else {
         setPostalLoading(true);
-        const area = await geocodePostal(alphanum);
-        setPostalArea(area);
-        setLockedLocation(area);
+        const geoResult = await geocodePostal(alphanum);
+        setPostalArea(geoResult?.city ?? null);
+        setLockedLocation(geoResult?.city ?? null);
+        if (geoResult) setCoords({ lat: geoResult.lat, lng: geoResult.lng });
         setPostalLoading(false);
       }
     }, 400);
@@ -162,10 +181,16 @@ export default function ScanScreen() {
     setError(null);
 
     try {
+      const body: Record<string, unknown> = { barcode: data };
+      if (coords) {
+        body.latitude = coords.lat;
+        body.longitude = coords.lng;
+      }
+
       const response = await fetch(`${API_URL}/scan/barcode`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: data }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -297,7 +322,9 @@ export default function ScanScreen() {
         <View style={styles.results}>
           <ProductCard product={result.product} />
 
-          <Text style={styles.sectionTitle}>Prices ({result.prices.length} stores)</Text>
+          <Text style={styles.sectionTitle}>
+            Prices ({result.prices.length} {coords ? 'nearby stores' : 'stores'})
+          </Text>
 
           {result.prices.map((price, index) => (
             <PriceCard key={price.id} price={price} isBest={index === 0} />

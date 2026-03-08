@@ -7,6 +7,7 @@ interface Price {
   price: number;
   salePrice: number | null;
   inStock: boolean;
+  distance?: number | null;
   store: {
     name: string;
     slug: string;
@@ -63,6 +64,12 @@ export default function PriceCard({ price, isBest = false, onAddToCart }: PriceC
           <Text style={styles.stockText}>
             {price.inStock ? 'In Stock' : 'Out of Stock'}
           </Text>
+          {price.distance != null && (
+            <View style={styles.distanceBadge}>
+              <Ionicons name="navigate-outline" size={11} color="#6B7280" />
+              <Text style={styles.distanceText}>{price.distance} km</Text>
+            </View>
+          )}
         </View>
 
         {onAddToCart && (
@@ -178,6 +185,16 @@ const styles = StyleSheet.create({
   },
   stockText: {
     fontSize: 12,
+    color: '#6B7280',
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+    gap: 3,
+  },
+  distanceText: {
+    fontSize: 11,
     color: '#6B7280',
   },
   addButton: {

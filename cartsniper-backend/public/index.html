@@ -731,6 +731,7 @@
     let sessionSaved = 0;
     let locationSet = false;
     let currentPostal = '';
+    let currentCoords = null; // { lat, lng } resolved from postal code
 
     // Demo product/price data (used when backend isn't running)
     const DEMO_PRODUCTS = {
@@ -749,18 +750,91 @@
       'coffee': { name: 'PC Whole Bean Coffee 340g', brand: "President's Choice", barcode: '0068700100307' },
     };
 
-    const DEMO_STORES = [
-      { name: 'No Frills', slug: 'nofrills', address: '2280 Dundas St W' },
-      { name: 'Walmart', slug: 'walmart', address: '900 Dufferin St' },
-      { name: 'FreshCo', slug: 'freshco', address: '1245 Dupont St' },
-      { name: 'Loblaws', slug: 'loblaws', address: '396 St Clair Ave W' },
-      { name: 'Metro', slug: 'metro', address: '425 Bloor St W' },
-    ];
+    // All demo stores keyed by FSA → city so fallback matches the user's area
+    const ALL_DEMO_STORES = {
+      toronto: [
+        { name: 'No Frills',  slug: 'nofrills', address: '2280 Dundas St W, Toronto, ON' },
+        { name: 'Walmart',    slug: 'walmart',  address: '900 Dufferin St, Toronto, ON' },
+        { name: 'FreshCo',    slug: 'freshco',  address: '1245 Dupont St, Toronto, ON' },
+        { name: 'Loblaws',    slug: 'loblaws',  address: '396 St Clair Ave W, Toronto, ON' },
+        { name: 'Metro',      slug: 'metro',    address: '425 Bloor St W, Toronto, ON' },
+      ],
+      milton: [
+        { name: 'No Frills',  slug: 'nofrills-milton',  address: '490 Childs Dr, Milton, ON' },
+        { name: 'Walmart',    slug: 'walmart-milton',   address: '1280 Steeles Ave E, Milton, ON' },
+        { name: 'FreshCo',    slug: 'freshco-milton',   address: '315 Main St E, Milton, ON' },
+        { name: 'Loblaws',    slug: 'loblaws-milton',   address: '55 Ontario St S, Milton, ON' },
+        { name: 'Metro',      slug: 'metro-milton',     address: '400 Main St E, Milton, ON' },
+      ],
+      mississauga: [
+        { name: 'No Frills',  slug: 'nofrills-mississauga',  address: '3476 Glen Erin Dr, Mississauga, ON' },
+        { name: 'Walmart',    slug: 'walmart-mississauga',   address: '3100 Dixie Rd, Mississauga, ON' },
+        { name: 'FreshCo',    slug: 'freshco-mississauga',   address: '2550 Hurontario St, Mississauga, ON' },
+        { name: 'Loblaws',    slug: 'loblaws-mississauga',   address: '3045 Clayhill Rd, Mississauga, ON' },
+        { name: 'Metro',      slug: 'metro-mississauga',     address: '1585 Mississauga Valley Blvd, Mississauga, ON' },
+      ],
+      brampton: [
+        { name: 'No Frills',  slug: 'nofrills-brampton',  address: '10088 McLaughlin Rd, Brampton, ON' },
+        { name: 'Walmart',    slug: 'walmart-brampton',   address: '35 Worthington Ave, Brampton, ON' },
+        { name: 'FreshCo',    slug: 'freshco-brampton',   address: '499 Main St S, Brampton, ON' },
+        { name: 'Loblaws',    slug: 'loblaws-brampton',   address: '9980 Airport Rd, Brampton, ON' },
+      ],
+      oakville: [
+        { name: 'No Frills',  slug: 'nofrills-oakville',  address: '1011 Upper Middle Rd E, Oakville, ON' },
+        { name: 'Walmart',    slug: 'walmart-oakville',   address: '240 Leighland Ave, Oakville, ON' },
+        { name: 'Loblaws',    slug: 'loblaws-oakville',   address: '469 Cornwall Rd, Oakville, ON' },
+        { name: 'Metro',      slug: 'metro-oakville',     address: '280 North Service Rd W, Oakville, ON' },
+      ],
+    };
+
+    // FSA → demo store group mapping
+    const FSA_STORE_GROUP = {
+      L9E: 'milton', L9T: 'milton',
+      L5A: 'mississauga', L5B: 'mississauga', L5C: 'mississauga', L5E: 'mississauga',
+      L5G: 'mississauga', L5H: 'mississauga', L5J: 'mississauga', L5K: 'mississauga',
+      L5L: 'mississauga', L5M: 'mississauga', L5N: 'mississauga', L5R: 'mississauga',
+      L5S: 'mississauga', L5T: 'mississauga', L5V: 'mississauga', L5W: 'mississauga',
+      L4T: 'mississauga', L4V: 'mississauga', L4W: 'mississauga', L4X: 'mississauga',
+      L4Y: 'mississauga', L4Z: 'mississauga',
+      L6P: 'brampton', L6R: 'brampton', L6S: 'brampton', L6T: 'brampton',
+      L6V: 'brampton', L6W: 'brampton', L6X: 'brampton', L6Y: 'brampton', L6Z: 'brampton',
+      L7A: 'brampton',
+      L6H: 'oakville', L6J: 'oakville', L6K: 'oakville', L6L: 'oakville', L6M: 'oakville',
+      L7L: 'oakville', L7M: 'oakville', L7N: 'oakville', L7P: 'oakville',
+      L7R: 'oakville', L7S: 'oakville', L7T: 'oakville',
+    };
+
+    function getDemoStores() {
+      if (!currentPostal) return ALL_DEMO_STORES.toronto;
+      const fsa = currentPostal.replace(/\s/g, '').slice(0, 3).toUpperCase();
+      const group = FSA_STORE_GROUP[fsa];
+      return ALL_DEMO_STORES[group] || ALL_DEMO_STORES.toronto;
+    }
+
+    // Approximate centre coordinates for each supported city group
+    const CITY_COORDS = {
+      toronto:     { lat: 43.660, lng: -79.395 },
+      milton:      { lat: 43.518, lng: -79.883 },
+      mississauga: { lat: 43.589, lng: -79.644 },
+      brampton:    { lat: 43.731, lng: -79.762 },
+      oakville:    { lat: 43.467, lng: -79.687 },
+    };
+
+    // Returns coords immediately from FSA — always synchronous, no network call needed
+    function coordsFromFsa(fsa) {
+      const group = FSA_STORE_GROUP[fsa.toUpperCase()];
+      return group ? CITY_COORDS[group] : CITY_COORDS.toronto;
+    }
 
     const STORE_EMOJIS = { walmart: '🛒', loblaws: '🏬', nofrills: '🟡', freshco: '🟢', metro: '🏪' };
+    function getStoreEmoji(slug) {
+      if (!slug) return '🏪';
+      const base = Object.keys(STORE_EMOJIS).find(k => slug === k || slug.startsWith(k + '-'));
+      return base ? STORE_EMOJIS[base] : '🏪';
+    }
 
     function generateDemoPrices(base) {
-      return DEMO_STORES.map(store => ({
+      return getDemoStores().map(store => ({
         store,
         price: +(base * (0.85 + Math.random() * 0.3)).toFixed(2),
         salePrice: Math.random() > 0.7 ? +(base * (0.75 + Math.random() * 0.15)).toFixed(2) : null,
@@ -923,7 +997,10 @@
       currentPostal = val;
       locationSet = true;
 
+      // Set coords immediately from FSA — no async race condition
       const fsa = m[1].toUpperCase();
+      currentCoords = coordsFromFsa(fsa);
+
       const city = ONTARIO_FSA_CITIES[fsa];
       const locationLabel = city ? `${val} — ${city}, Ontario` : val;
 
@@ -932,6 +1009,17 @@
       document.getElementById('location-display').textContent = locationLabel;
       document.getElementById('product-search').style.display = 'block';
       document.getElementById('product-input').focus();
+
+      // Optionally refine coords via geocoder.ca (more precise pinpoint, not required)
+      const alphanum = val.replace(/\s/g, '');
+      fetch(`https://geocoder.ca/?postal=${alphanum}&json=1`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.latt && d.longt) {
+            currentCoords = { lat: parseFloat(d.latt), lng: parseFloat(d.longt) };
+          }
+        })
+        .catch(() => {});
     }
 
     function showPostalError(msg) {
@@ -982,10 +1070,12 @@
 
     async function lookupAndRenderBarcode(barcode) {
       try {
+        const payload = { barcode };
+        if (currentCoords) { payload.latitude = currentCoords.lat; payload.longitude = currentCoords.lng; }
         const res = await fetch(`${API_URL}/scan/barcode`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode }),
+          body: JSON.stringify(payload),
           signal: AbortSignal.timeout(15000),
         });
 
@@ -1105,10 +1195,13 @@
         '<span style="color:#1a7a3c;font-weight:600;">Identifying product with AI...</span>';
 
       try {
+        const payload = { imageBase64: capturedImageBase64 };
+        if (currentCoords) { payload.latitude = currentCoords.lat; payload.longitude = currentCoords.lng; }
+
         const res = await fetch(`${API_URL}/scan/image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: capturedImageBase64 }),
+          body: JSON.stringify(payload),
           signal: AbortSignal.timeout(15000),
         });
 
@@ -1116,6 +1209,23 @@
           const data = await res.json();
           if (data.identified) {
             closeScanner();
+
+            // If backend returned no prices (product not in DB), generate mock prices now
+            let prices = data.prices || [];
+            if (prices.length === 0) {
+              const seed = data.identified.upc || data.identified.name || 'unknown';
+              let hash = 0;
+              for (const ch of seed) hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+              const base = 2 + Math.abs(hash % 1300) / 100;
+              prices = getDemoStores().map((store, i) => {
+                const variation = 1 + ((((hash >> (i * 3)) & 0x3F) - 32) / 160);
+                const price = +(base * variation).toFixed(2);
+                const onSale = ((hash >> (i * 5)) & 0x7) < 2;
+                const salePrice = onSale ? +(price * 0.8).toFixed(2) : null;
+                return { store, price, salePrice, inStock: true };
+              }).sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
+            }
+
             // Build result structure for rendering
             const resultData = {
               product: data.product || {
@@ -1123,17 +1233,14 @@
                 brand: data.identified.brand,
                 category: data.identified.category,
               },
-              prices: data.prices || [],
-              bestPrice: data.bestPrice || null,
+              prices,
+              bestPrice: prices[0] || null,
             };
             const label = data.identified.name + (data.identified.brand ? ` (${data.identified.brand})` : '');
             renderResults(label, resultData);
             document.getElementById('results-section').style.display = 'block';
             document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
-            if (data.prices?.length) updateStats(data.prices);
-            if (data.message) {
-              document.getElementById('scanner-status').textContent = data.message;
-            }
+            if (prices.length) updateStats(prices);
           } else {
             document.getElementById('scanner-status').innerHTML =
               '<span style="color:#dc2626;">Could not identify a product. Try again with a clearer photo.</span>';
@@ -1183,10 +1290,12 @@
         if (match) {
           // Try real backend
           try {
+            const searchPayload = { barcode: match.barcode };
+            if (currentCoords) { searchPayload.latitude = currentCoords.lat; searchPayload.longitude = currentCoords.lng; }
             const res = await fetch(`${API_URL}/scan/barcode`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ barcode: match.barcode }),
+              body: JSON.stringify(searchPayload),
               signal: AbortSignal.timeout(2000)
             });
             if (res.ok) data = await res.json();
@@ -1459,7 +1568,7 @@
       const store = flyerState.storeData || {};
 
       document.getElementById('detail-product-name').textContent = d.name;
-      document.getElementById('detail-store-name').textContent = `${STORE_EMOJIS[store.slug] || '🏪'} ${m.storeName || store.name || 'Store'}`;
+      document.getElementById('detail-store-name').textContent = `${getStoreEmoji(store.slug)} ${m.storeName || store.name || 'Store'}`;
 
       let rows = '';
       const addRow = (label, value) => {
@@ -1581,7 +1690,7 @@
       effectivePrices.forEach((p, i) => {
         const isBest = i === 0;
         const store = p.store || {};
-        const emoji = STORE_EMOJIS[store.slug] || '🏪';
+        const emoji = getStoreEmoji(store.slug);
         const onSale = !!p.salePrice;
         const savings = onSale ? (p.price - p.salePrice).toFixed(2) : null;
 
