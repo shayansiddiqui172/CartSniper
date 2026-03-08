@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import { env } from './config/env';
 
 // Route imports
@@ -14,6 +15,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Large limit for base64 images
 
+// Serve frontend
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -24,6 +28,11 @@ app.use('/scan', scanRoutes);
 app.use('/prices', pricesRoutes);
 app.use('/cart', cartRoutes);
 app.use('/alerts', alertsRoutes);
+
+// Fallback: serve index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 // Global error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
