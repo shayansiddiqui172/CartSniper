@@ -955,7 +955,57 @@
     let html5QrCode = null;
     let photoStream = null;
     let capturedImageBase64 = null;
-    let scanLocked = false; // prevent duplicate scans
+    let scanLocked = false;
+
+    function showScannerLoading(barcode) {
+      document.getElementById('barcode-reader').style.display = 'none';
+      document.getElementById('manual-barcode-entry').style.display = 'none';
+      document.getElementById('scanner-status').innerHTML =
+        `<div style="padding:30px 0;text-align:center;">
+          <div style="font-size:16px;font-weight:700;color:#1a7a3c;margin-bottom:6px;">Barcode: ${barcode}</div>
+          <div style="color:#6b7280;">Looking up product...</div>
+          <div style="margin-top:14px;">
+            <svg class="animate-spin" style="color:#1a7a3c;display:inline-block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="28" height="28">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+          </div>
+        </div>`;
+    }
+
+    function showScannerError(barcode) {
+      scanLocked = false;
+      document.getElementById('manual-barcode-entry').style.display = 'block';
+      document.getElementById('scanner-status').innerHTML =
+        `<span style="color:#dc2626;font-weight:600;">Product not found for barcode ${barcode}.</span><br/>Try a different barcode or enter one manually.`;
+    }
+
+    async function lookupAndRenderBarcode(barcode) {
+      try {
+        const res = await fetch(`${API_URL}/scan/barcode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode }),
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          closeScanner();
+          renderResults(data.product?.name || barcode, data);
+          document.getElementById('results-section').style.display = 'block';
+          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+          updateStats(data.prices || []);
+        } else {
+          showScannerError(barcode);
+        }
+      } catch {
+        scanLocked = false;
+        document.getElementById('manual-barcode-entry').style.display = 'block';
+        document.getElementById('scanner-status').innerHTML =
+          `<span style="color:#dc2626;font-weight:600;">Lookup failed.</span><br/>Check your connection and try again.`;
+      }
+    }
 
     function openBarcodeScanner() {
       if (!locationSet) { document.getElementById('postal-input').focus(); document.getElementById('search-area').scrollIntoView({behavior:'smooth'}); return; }
@@ -973,123 +1023,28 @@
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 280, height: 150 }, aspectRatio: 1.5 },
         onBarcodeScanned,
-        () => {} // ignore scan failures
-      ).catch(err => {
+        () => {}
+      ).catch(() => {
         document.getElementById('scanner-status').textContent = 'Camera not available. Try entering the barcode manually.';
-        console.error('Scanner error:', err);
       });
     }
 
     async function onBarcodeScanned(decodedText) {
-      // Guard: prevent multiple rapid-fire calls
       if (scanLocked) return;
       scanLocked = true;
 
-      // Stop the camera scanner
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-      }
+      if (html5QrCode) html5QrCode.stop().catch(() => {});
 
-      // Hide the camera feed, show progress in-modal
-      document.getElementById('barcode-reader').style.display = 'none';
-      document.getElementById('manual-barcode-entry').style.display = 'none';
-      document.getElementById('scanner-status').innerHTML =
-        `<div style="padding:30px 0;text-align:center;">
-          <div style="font-size:16px;font-weight:700;color:#1a7a3c;margin-bottom:6px;">Barcode: ${decodedText}</div>
-          <div style="color:#6b7280;">Looking up product...</div>
-          <div style="margin-top:14px;">
-            <svg class="animate-spin" style="color:#1a7a3c;display:inline-block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="28" height="28">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-          </div>
-        </div>`;
-
-      try {
-        const res = await fetch(`${API_URL}/scan/barcode`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: decodedText }),
-          signal: AbortSignal.timeout(15000),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          console.log('Scan result:', data);
-          closeScanner();
-          try {
-            renderResults(data.product?.name || decodedText, data);
-            document.getElementById('results-section').style.display = 'block';
-            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
-            updateStats(data.prices || []);
-          } catch (renderErr) {
-            console.error('Render error:', renderErr);
-            alert('Error displaying results: ' + String(renderErr));
-          }
-        } else {
-          const errBody = await res.text().catch(() => '');
-          console.log('Scan error:', res.status, errBody);
-          // Show error but let them retry — keep modal open
-          scanLocked = false;
-          document.getElementById('barcode-reader').style.display = 'block';
-          document.getElementById('manual-barcode-entry').style.display = 'block';
-          document.getElementById('scanner-status').innerHTML =
-            `<span style="color:#dc2626;font-weight:600;">Product not found for barcode ${decodedText}.</span><br/>Try a different barcode or enter one manually.`;
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-        scanLocked = false;
-        document.getElementById('barcode-reader').style.display = 'block';
-        document.getElementById('manual-barcode-entry').style.display = 'block';
-        document.getElementById('scanner-status').innerHTML =
-          `<span style="color:#dc2626;font-weight:600;">Lookup failed: ${err.message}</span><br/>Try entering the barcode number manually below.`;
-      }
+      showScannerLoading(decodedText);
+      await lookupAndRenderBarcode(decodedText);
     }
 
     async function submitManualBarcode() {
       const code = document.getElementById('manual-barcode-input').value.trim();
       if (!code) return;
 
-      // Independent from camera scan — bypass scanLocked entirely
-      document.getElementById('manual-barcode-entry').style.display = 'none';
-      document.getElementById('barcode-reader').style.display = 'none';
-      document.getElementById('scanner-status').innerHTML =
-        `<div style="padding:30px 0;text-align:center;">
-          <div style="font-size:16px;font-weight:700;color:#1a7a3c;margin-bottom:6px;">Barcode: ${code}</div>
-          <div style="color:#6b7280;">Looking up product...</div>
-          <div style="margin-top:14px;">
-            <svg class="animate-spin" style="color:#1a7a3c;display:inline-block;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" width="28" height="28">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-          </div>
-        </div>`;
-
-      try {
-        const res = await fetch(`${API_URL}/scan/barcode`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: code }),
-          signal: AbortSignal.timeout(15000),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          closeScanner();
-          renderResults(data.product?.name || code, data);
-          document.getElementById('results-section').style.display = 'block';
-          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
-          updateStats(data.prices || []);
-        } else {
-          document.getElementById('manual-barcode-entry').style.display = 'block';
-          document.getElementById('scanner-status').innerHTML =
-            `<span style="color:#dc2626;font-weight:600;">Product not found for barcode ${code}.</span><br/>Try a different number.`;
-        }
-      } catch (err) {
-        document.getElementById('manual-barcode-entry').style.display = 'block';
-        document.getElementById('scanner-status').innerHTML =
-          `<span style="color:#dc2626;font-weight:600;">Lookup failed.</span><br/>Check your connection and try again.`;
-      }
+      showScannerLoading(code);
+      await lookupAndRenderBarcode(code);
     }
 
     // ─── PHOTO CAPTURE ───
@@ -1113,9 +1068,8 @@
           photoStream = stream;
           video.srcObject = stream;
         })
-        .catch(err => {
+        .catch(() => {
           document.getElementById('scanner-status').textContent = 'Camera not available on this device.';
-          console.error('Camera error:', err);
         });
     }
 
