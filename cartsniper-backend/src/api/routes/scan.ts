@@ -45,11 +45,18 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 // Generate deterministic mock prices seeded by barcode, filtered by location
+// Fixed price ranges for specific products
+const FIXED_PRICE_RANGES: Record<string, { min: number; max: number }> = {
+  '0055577100103': { min: 3.99, max: 4.50 }, // Bread
+  '0068700100208': { min: 5.99, max: 7.49 }, // Milk
+};
+
 function generateMockPrices(barcode: string, latitude?: number, longitude?: number, radiusKm: number = 15) {
   const seed = barcode || 'unknown';
   let hash = 0;
   for (const ch of seed) hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
   const base = 2 + Math.abs(hash % 1300) / 100;
+  const fixedRange = FIXED_PRICE_RANGES[barcode];
 
   // Annotate all stores with distance
   const annotated = CANADIAN_STORES.map((store, i) => ({
@@ -73,10 +80,19 @@ function generateMockPrices(barcode: string, latitude?: number, longitude?: numb
 
   return stores.map((store) => {
     const i = store.index;
-    const variation = 1 + ((((hash >> (i * 3)) & 0x3F) - 32) / 160);
-    const price = +(base * variation).toFixed(2);
-    const onSale = ((hash >> (i * 5)) & 0x7) < 2;
-    const salePrice = onSale ? +(price * 0.8).toFixed(2) : null;
+    let price: number;
+    let onSale: boolean;
+    let salePrice: number | null;
+    if (fixedRange) {
+      price = +(fixedRange.min + ((((hash >> (i * 3)) & 0x3F) / 63) * (fixedRange.max - fixedRange.min))).toFixed(2);
+      onSale = false;
+      salePrice = null;
+    } else {
+      const variation = 1 + ((((hash >> (i * 3)) & 0x3F) - 32) / 160);
+      price = +(base * variation).toFixed(2);
+      onSale = ((hash >> (i * 5)) & 0x7) < 2;
+      salePrice = onSale ? +(price * 0.8).toFixed(2) : null;
+    }
 
     return {
       id: `mock-${store.slug}-${seed}`,

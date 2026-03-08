@@ -871,13 +871,25 @@
       return base ? STORE_EMOJIS[base] : '🏪';
     }
 
-    function generateDemoPrices(base) {
-      return getDemoStores().map(store => ({
-        store,
-        price: +(base * (0.85 + Math.random() * 0.3)).toFixed(2),
-        salePrice: Math.random() > 0.7 ? +(base * (0.75 + Math.random() * 0.15)).toFixed(2) : null,
-        inStock: Math.random() > 0.08,
-      })).sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
+    // Fixed price ranges for specific products
+    const FIXED_PRICE_RANGES = {
+      '0055577100103': { min: 3.99, max: 4.50 }, // Bread
+      '0068700100208': { min: 5.99, max: 7.49 }, // Milk
+    };
+
+    function generateDemoPrices(base, barcode) {
+      const range = barcode ? FIXED_PRICE_RANGES[barcode] : null;
+      return getDemoStores().map(store => {
+        let price, salePrice;
+        if (range) {
+          price = +(range.min + Math.random() * (range.max - range.min)).toFixed(2);
+          salePrice = null;
+        } else {
+          price = +(base * (0.85 + Math.random() * 0.3)).toFixed(2);
+          salePrice = Math.random() > 0.7 ? +(base * (0.75 + Math.random() * 0.15)).toFixed(2) : null;
+        }
+        return { store, price, salePrice, inStock: Math.random() > 0.08 };
+      }).sort((a, b) => (a.salePrice || a.price) - (b.salePrice || b.price));
     }
 
     const BASE_PRICES = {
@@ -1509,7 +1521,7 @@
             const base = BASE_PRICES[match.barcode] || 4.99;
             data = {
               product: { ...match, id: match.barcode },
-              prices: generateDemoPrices(base),
+              prices: generateDemoPrices(base, match.barcode),
               demo: true,
             };
           }
@@ -1525,7 +1537,7 @@
         const base = 3 + Math.random() * 8;
         data = {
           product: { name: capitalize(query), brand: 'Various', id: query },
-          prices: generateDemoPrices(base),
+          prices: generateDemoPrices(base, null),
           demo: true,
         };
       }
