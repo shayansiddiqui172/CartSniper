@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.db-journal
+
+# Prisma
+prisma/migrations/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
