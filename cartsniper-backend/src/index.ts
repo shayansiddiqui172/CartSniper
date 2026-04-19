@@ -27,6 +27,15 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root route for serverless deployments where no static frontend is served.
+app.get('/', (req, res) => {
+  res.json({
+    name: 'CartSniper API',
+    status: 'ok',
+    health: '/health',
+  });
+});
+
 // API Routes
 app.use('/scan', scanRoutes);
 app.use('/prices', pricesRoutes);
@@ -38,6 +47,13 @@ app.use('/flyer', flyerRoutes);
 if (!isVercel) {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
+}
+
+// In serverless runtime, return JSON 404s for unknown paths.
+if (isVercel) {
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not found' });
   });
 }
 
