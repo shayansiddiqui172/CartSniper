@@ -11,13 +11,16 @@ import alertsRoutes from './api/routes/alerts';
 import flyerRoutes from './api/routes/flyer';
 
 const app = express();
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Large limit for base64 images
 
-// Serve frontend
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve frontend only for local/server runtime.
+if (!isVercel) {
+  app.use(express.static(path.join(__dirname, '../public')));
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -31,10 +34,12 @@ app.use('/cart', cartRoutes);
 app.use('/alerts', alertsRoutes);
 app.use('/flyer', flyerRoutes);
 
-// Fallback: serve index.html for any non-API route
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
+// Fallback: serve index.html for any non-API route in local/server runtime.
+if (!isVercel) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
+}
 
 // Global error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -42,10 +47,12 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
-const PORT = parseInt(env.PORT, 10);
-app.listen(PORT, () => {
-  console.log(`🛒 CartSniper API running on http://localhost:${PORT}`);
-});
+// Start server only outside serverless runtimes.
+if (!isVercel) {
+  const PORT = parseInt(env.PORT, 10);
+  app.listen(PORT, () => {
+    console.log(`CartSniper API running on http://localhost:${PORT}`);
+  });
+}
 
 export default app;

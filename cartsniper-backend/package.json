@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "start": "export DATABASE_URL=${DATABASE_URL:-file:./prisma/prod.db} && prisma migrate deploy && node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
