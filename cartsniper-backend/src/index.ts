@@ -17,23 +17,12 @@ const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true';
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Large limit for base64 images
 
-// Serve frontend only for local/server runtime.
-if (!isVercel) {
-  app.use(express.static(path.join(__dirname, '../public')));
-}
+// Serve frontend assets.
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Root route for serverless deployments where no static frontend is served.
-app.get('/', (req, res) => {
-  res.json({
-    name: 'CartSniper API',
-    status: 'ok',
-    health: '/health',
-  });
 });
 
 // API Routes
@@ -43,19 +32,10 @@ app.use('/cart', cartRoutes);
 app.use('/alerts', alertsRoutes);
 app.use('/flyer', flyerRoutes);
 
-// Fallback: serve index.html for any non-API route in local/server runtime.
-if (!isVercel) {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
-  });
-}
-
-// In serverless runtime, return JSON 404s for unknown paths.
-if (isVercel) {
-  app.use((req, res) => {
-    res.status(404).json({ error: 'Not found' });
-  });
-}
+// Fallback: serve index.html for any non-API route.
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
 
 // Global error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
