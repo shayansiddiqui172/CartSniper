@@ -3,20 +3,19 @@
   "buildCommand": "npm run build",
   "routes": [
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "\/(scan|prices|cart|alerts|flyer|health)(?:\/.*)?",
       "dest": "\/api\/index.js"
     },
     {
-      "src": "\/flyer-images\/(.*)",
-      "dest": "\/public\/flyer-images\/$1"
-    },
-    {
       "src": "\/",
-      "dest": "\/public\/index.html"
+      "dest": "\/index.html"
     },
     {
       "src": "\/(.*)",
-      "dest": "\/public\/$1"
+      "dest": "\/index.html"
     }
   ]
 }
